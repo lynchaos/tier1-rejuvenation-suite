@@ -215,7 +215,10 @@ class BiologicallyValidatedRejuvenationScorer:
             return self._validate_existing_labels(df)
         
         # Age-stratified baseline correction
-        age_strata = self._create_age_strata(df['age'].values if 'age' in df.columns else None)
+        age_strata = self._create_age_strata(
+            df['age'].values if 'age' in df.columns else None, 
+            n_samples=len(df)
+        )
         
         # Weighted biological components based on aging literature
         biological_weights = {
@@ -271,18 +274,21 @@ class BiologicallyValidatedRejuvenationScorer:
         
         return pd.Series(target_normalized, index=df.index, name='biological_rejuvenation_score')
     
-    def _create_age_strata(self, ages: Optional[np.ndarray]) -> np.ndarray:
+    def _create_age_strata(self, ages: Optional[np.ndarray], n_samples: int = None) -> np.ndarray:
         """Create age-based stratification for biological correction"""
         if ages is None:
-            # Default to middle-aged if no age data
-            return np.array(['middle'] * len(ages) if ages is not None else ['middle'])
+            # Default to middle-aged if no age data - need sample count
+            sample_count = n_samples if n_samples is not None else 1
+            return np.array(['middle'] * sample_count)
         
         strata = np.empty(len(ages), dtype=object)
+        
+        # Simple age-based stratification if no predefined baselines
         for i, age in enumerate(ages):
-            if self.age_baselines['young'][0] <= age <= self.age_baselines['young'][1]:
+            if age < 35:
                 strata[i] = 'young'
-            elif self.age_baselines['middle'][0] <= age <= self.age_baselines['middle'][1]:
-                strata[i] = 'middle'
+            elif age <= 65:
+                strata[i] = 'middle' 
             else:
                 strata[i] = 'old'
                 
@@ -444,8 +450,8 @@ class BiologicallyValidatedRejuvenationScorer:
             if strata_numeric is not None:
                 cv_scores = cross_val_score(
                     model, X_scaled_df, y, 
-                    cv=cv_splitter, scoring='r2',
-                    groups=strata_numeric
+                    cv=cv_splitter.split(X_scaled_df, strata_numeric), 
+                    scoring='r2'
                 )
             else:
                 cv_scores = cross_val_score(

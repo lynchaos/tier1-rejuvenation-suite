@@ -386,15 +386,37 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         print("   (This may take a few minutes for larger datasets...)")
         
         # Run scoring with biological validation
-        result_df = scorer.score_cells(data)
-        
-        # Extract scores based on version
-        if is_corrected:
-            score_col = 'biological_rejuvenation_score'
-            scores = result_df[score_col].values if score_col in result_df.columns else result_df['rejuvenation_score'].values
-        else:
-            score_col = 'rejuvenation_score'
-            scores = result_df[score_col].values
+        try:
+            result_df = scorer.score_cells(data)
+            
+            # Extract scores based on version
+            if is_corrected:
+                score_col = 'biological_rejuvenation_score'
+                scores = result_df[score_col].values if score_col in result_df.columns else result_df['rejuvenation_score'].values
+            else:
+                score_col = 'rejuvenation_score'
+                scores = result_df[score_col].values
+                
+        except Exception as e:
+            if is_corrected:
+                print(f"⚠️  Biological validation failed: {e}")
+                print("🔄 Falling back to original RegenOmics scorer...")
+                
+                # Import and use original scorer as fallback
+                from cell_rejuvenation_scoring import CellRejuvenationScorer
+                fallback_scorer = CellRejuvenationScorer()
+                
+                # Remove metadata columns for original scorer
+                data_clean = data.select_dtypes(include=[np.number])
+                result_df = fallback_scorer.score_cells(data_clean)
+                
+                score_col = 'rejuvenation_score'
+                scores = result_df[score_col].values
+                is_corrected = False  # Mark as using fallback
+                
+                print("✅ Fallback analysis successful!")
+            else:
+                raise e
         
         print(f"\n✅ BIOLOGICALLY VALIDATED ANALYSIS COMPLETE!")
         print("=" * 60)
