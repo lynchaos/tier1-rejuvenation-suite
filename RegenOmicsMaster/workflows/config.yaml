@@ -1,0 +1,461 @@
+# RegenOmics Master Pipeline Configuration
+# ==================================================
+# Comprehensive configuration for cell rejuvenation analysis pipeline
+# Supports bulk RNA-seq, scRNA-seq, and multi-omics data processing
+
+# Pipeline Metadata
+pipeline:
+  name: "RegenOmics Master Pipeline"
+  version: "1.0.0"
+  description: "Comprehensive cell rejuvenation analysis pipeline"
+  author: "RegenOmics Research Team"
+  contact: "support@regenomics.org"
+
+# Resource Configuration
+threads: 8
+memory: "16GB"
+
+# Input/Output Configuration
+data:
+  input_dir: "data/raw"
+  output_dir: "results"
+  references_dir: "references"
+  
+  # Supported input formats
+  formats:
+    - "fastq.gz"
+    - "fq.gz"
+    - "bam"
+    - "sam"
+    - "h5ad"  # AnnData format for scRNA-seq
+    - "csv"
+    - "tsv"
+  
+  # Sample metadata requirements
+  metadata:
+    required_columns:
+      - "sample_id"
+      - "condition"
+      - "batch"
+    optional_columns:
+      - "age"
+      - "sex"
+      - "treatment"
+      - "timepoint"
+      - "tissue_type"
+      - "cell_type"
+
+# Reference Genome Configuration
+genome:
+  # Species detection and reference selection
+  auto_detect: true
+  default_species: "homo_sapiens"
+  
+  # Supported species with their reference configurations
+  references:
+    homo_sapiens:
+      genome_fasta: "references/human/GRCh38/genome.fa"
+      annotation_gtf: "references/human/GRCh38/genes.gtf"
+      star_index: "references/human/GRCh38/star_index"
+      transcriptome_fasta: "references/human/GRCh38/transcriptome.fa"
+      
+    mus_musculus:
+      genome_fasta: "references/mouse/GRCm39/genome.fa"
+      annotation_gtf: "references/mouse/GRCm39/genes.gtf"
+      star_index: "references/mouse/GRCm39/star_index"
+      transcriptome_fasta: "references/mouse/GRCm39/transcriptome.fa"
+    
+    macaca_mulatta:
+      genome_fasta: "references/primate/Mmul_10/genome.fa"
+      annotation_gtf: "references/primate/Mmul_10/genes.gtf"
+      star_index: "references/primate/Mmul_10/star_index"
+      transcriptome_fasta: "references/primate/Mmul_10/transcriptome.fa"
+
+# Quality Control Parameters
+qc:
+  # FastQC parameters
+  fastqc:
+    enabled: true
+    threads: 4
+    memory: "4GB"
+  
+  # MultiQC settings
+  multiqc:
+    title: "RegenOmics Master Pipeline QC Report"
+    comment: "Comprehensive quality control for regenerative biology analysis"
+    enabled: true
+  
+  # Trimming parameters (Trimmomatic/fastp)
+  trimming:
+    enabled: true
+    tool: "fastp"  # Options: trimmomatic, fastp, cutadapt
+    parameters:
+      fastp:
+        cut_front: 5
+        cut_tail: 5
+        cut_window_size: 4
+        cut_mean_quality: 20
+        length_required: 30
+        detect_adapter_for_pe: true
+      trimmomatic:
+        adapters: "TruSeq3-PE.fa"
+        sliding_window: "4:20"
+        leading: 3
+        trailing: 3
+        minlen: 30
+  
+  # Filtering thresholds
+  filtering:
+    min_reads_per_sample: 1000000
+    max_duplicate_rate: 0.7
+    min_mapping_rate: 0.6
+    min_genes_detected: 5000
+
+# Alignment Configuration
+alignment:
+  # STAR aligner parameters
+  star:
+    enabled: true
+    threads: 8
+    memory: "32GB"
+    genome_load: "NoSharedMemory"
+    out_sam_type: "BAM SortedByCoordinate"
+    out_sam_unmapped: "Within"
+    quant_mode: "GeneCounts"
+    limit_bam_sort_ram: 31000000000
+    parameters:
+      outFilterType: "BySJout"
+      outFilterMultimapNmax: 10
+      alignSJoverhangMin: 8
+      alignSJDBoverhangMin: 1
+      outFilterMismatchNmax: 999
+      outFilterMismatchNoverReadLmax: 0.04
+      alignIntronMin: 20
+      alignIntronMax: 1000000
+      alignMatesGapMax: 1000000
+      outFilterScoreMinOverLread: 0.33
+      outFilterMatchNminOverLread: 0.33
+      limitSjdbInsertNsj: 1200000
+      outSAMstrandField: "intronMotif"
+      outFilterIntronMotifs: "RemoveNoncanonical"
+
+# Feature Counting
+counting:
+  # featureCounts parameters
+  featurecounts:
+    enabled: true
+    threads: 4
+    memory: "8GB"
+    feature_type: "exon"
+    attribute_type: "gene_id"
+    strand_specific: 2  # 0=unstranded, 1=stranded, 2=reverse-stranded
+    multi_mapping: false
+    primary_only: true
+    min_mapping_quality: 10
+
+# Differential Expression Analysis
+differential_expression:
+  # Analysis methods
+  methods:
+    - "DESeq2"
+    - "edgeR"
+    - "limma"
+  
+  # Statistical parameters
+  parameters:
+    # Filtering
+    min_count_threshold: 10
+    min_samples_fraction: 0.3
+    cpm_threshold: 1
+    
+    # Statistical testing
+    significance_threshold: 0.05
+    log_fc_threshold: 1.0
+    multiple_testing_method: "fdr_bh"  # Benjamini-Hochberg
+    
+    # Model design
+    batch_correction: true
+    surrogate_variables: true
+    
+  # Visualization
+  plots:
+    ma_plot: true
+    volcano_plot: true
+    heatmap: true
+    pca_plot: true
+    sample_correlation: true
+
+# Machine Learning Configuration
+machine_learning:
+  # Model directory and settings
+  model_dir: "ml/models"
+  random_state: 42
+  bootstrap_samples: 100
+  
+  # Feature selection
+  feature_selection:
+    enabled: true
+    methods:
+      - "variance_threshold"
+      - "univariate_selection"
+      - "recursive_feature_elimination"
+      - "lasso_regularization"
+    
+    parameters:
+      variance_threshold: 0.01
+      k_best: 5000
+      rfe_features: 1000
+      lasso_alpha: 0.01
+  
+  # Model configuration
+  models:
+    random_forest:
+      enabled: true
+      n_estimators: 100
+      max_depth: 10
+      min_samples_split: 5
+      min_samples_leaf: 2
+      n_jobs: -1
+    
+    gradient_boosting:
+      enabled: true
+      n_estimators: 100
+      learning_rate: 0.1
+      max_depth: 6
+      subsample: 0.8
+    
+    xgboost:
+      enabled: true
+      n_estimators: 100
+      learning_rate: 0.1
+      max_depth: 6
+      subsample: 0.8
+      colsample_bytree: 0.8
+      n_jobs: -1
+    
+    elastic_net:
+      enabled: true
+      alpha: 0.1
+      l1_ratio: 0.5
+      max_iter: 1000
+  
+  # Cross-validation
+  cross_validation:
+    method: "stratified_kfold"
+    n_splits: 5
+    shuffle: true
+  
+  # Ensemble methods
+  ensemble:
+    enabled: true
+    method: "weighted_average"  # Options: voting, weighted_average, stacking
+    weights: "performance_based"  # Options: equal, performance_based, custom
+
+# Pathway Analysis Configuration
+pathway_analysis:
+  # Gene set enrichment analysis
+  gsea:
+    enabled: true
+    parameters:
+      permutation_type: "phenotype"
+      n_permutations: 1000
+      min_gene_set_size: 10
+      max_gene_set_size: 500
+      scoring_scheme: "weighted"
+  
+  # Over-representation analysis
+  ora:
+    enabled: true
+    parameters:
+      p_value_cutoff: 0.05
+      q_value_cutoff: 0.25
+      min_overlap: 3
+  
+  # Gene sets
+  gene_sets:
+    hallmark: true
+    go_bp: true
+    go_cc: false
+    go_mf: true
+    kegg: true
+    reactome: true
+    aging_specific: true
+    longevity_specific: true
+
+# Aging and Rejuvenation Biomarkers
+biomarkers:
+  aging_markers:
+    senescence: 
+      genes: ["CDKN1A", "CDKN2A", "TP53", "RB1", "GLB1", "LMNB1", "CDKN2B", "MDM2"]
+      weight: -1.5  # Negative for aging markers
+    inflammation: 
+      genes: ["TNF", "IL6", "IL1B", "NFKB1", "CXCL1", "CCL2", "IL8", "CRP"]
+      weight: -1.0
+    dna_damage: 
+      genes: ["ATM", "BRCA1", "H2AFX", "CHEK2", "MDC1", "53BP1", "RAD51"]
+      weight: -1.2
+    oxidative_stress: 
+      genes: ["NOX4", "CYBA", "PTGS2", "HMOX1", "MT1A", "MT2A"]
+      weight: -1.1
+    telomere_dysfunction: 
+      genes: ["TERT", "TERF1", "TERF2", "RTEL1", "TINF2", "ACD"]
+      weight: -1.3
+    protein_aggregation:
+      genes: ["MAPT", "SNCA", "HTT", "PRNP", "FUS", "TDP43"]
+      weight: -1.2
+      
+  rejuvenation_markers:
+    longevity: 
+      genes: ["SIRT1", "SIRT3", "SIRT6", "FOXO1", "FOXO3", "KLOTHO", "APOE", "CISD2"]
+      weight: 1.4
+    metabolism: 
+      genes: ["PRKAA1", "PPARGC1A", "PPARA", "NRF1", "TFAM", "UCP2", "ADIPOQ"]
+      weight: 1.1
+    autophagy: 
+      genes: ["ATG5", "ATG7", "BECN1", "MAP1LC3B", "SQSTM1", "ULK1", "ATG12"]
+      weight: 1.2
+    stem_cell: 
+      genes: ["POU5F1", "SOX2", "NANOG", "KLF4", "MYC", "LIN28A", "DPPA4"]
+      weight: 1.3
+    antioxidant: 
+      genes: ["NFE2L2", "SOD1", "SOD2", "CAT", "GPX1", "NQO1", "GCLC", "GSR"]
+      weight: 1.0
+    dna_repair:
+      genes: ["BRCA1", "BRCA2", "ATM", "ATR", "CHEK1", "PARP1", "XRCC1", "RAD51"]
+      weight: 1.3
+    mitochondrial_function:
+      genes: ["TFAM", "NRF1", "NRF2", "PGC1A", "COX4I1", "NDUFA4", "ATP5F1A"]
+      weight: 1.2
+
+# Visualization Configuration
+visualization:
+  # Plot parameters
+  figure_format: "png"
+  dpi: 300
+  figure_size: [10, 8]
+  color_palette: "viridis"
+  
+  # Interactive plots
+  interactive:
+    enabled: true
+    backend: "plotly"  # Options: plotly, bokeh
+    
+  # Report generation
+  report:
+    format: "html"  # Options: html, pdf, markdown
+    include_code: false
+    template: "comprehensive"  # Options: standard, detailed, minimal, comprehensive
+
+# Report Generation Settings
+reports:
+  title: "RegenOmics Master Pipeline Analysis Report"
+  author: "RegenOmics Research Team"
+  description: "Comprehensive analysis of cellular rejuvenation and aging reversal"
+  version: "1.0.0"
+  
+  # Report sections
+  sections:
+    quality_control: true
+    differential_expression: true
+    pathway_analysis: true
+    ml_predictions: true
+    biomarker_analysis: true
+    sample_rankings: true
+    technical_details: true
+
+# Resource Management
+resources:
+  # Default resource allocation
+  default:
+    cpus: 4
+    memory: "8GB"
+    time: "2h"
+    
+  # Tool-specific resources
+  tools:
+    star_alignment:
+      cpus: 8
+      memory: "32GB"
+      time: "4h"
+      
+    differential_expression:
+      cpus: 4
+      memory: "16GB"
+      time: "1h"
+      
+    machine_learning:
+      cpus: 8
+      memory: "16GB"
+      time: "3h"
+      
+    pathway_analysis:
+      cpus: 2
+      memory: "8GB"
+      time: "30min"
+
+# Cloud Configuration (for scalable processing)
+cloud:
+  enabled: false
+  
+  # AWS Batch
+  aws_batch:
+    enabled: false
+    job_queue: "regenomics-queue"
+    job_definition: "regenomics-job-def"
+    s3_bucket: "regenomics-data"
+    
+  # Google Cloud
+  google_cloud:
+    enabled: false
+    project_id: "regenomics-project"
+    region: "us-central1"
+    bucket: "gs://regenomics-data"
+
+# Logging and Monitoring
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/regenomics_pipeline.log"
+  
+  # Performance monitoring
+  monitoring:
+    enabled: true
+    metrics:
+      - "cpu_usage"
+      - "memory_usage"
+      - "disk_usage"
+      - "runtime"
+
+# Output Configuration
+output:
+  # File organization
+  structure:
+    by_sample: true
+    by_analysis: true
+    compress: true
+  
+  # Results to keep
+  keep_intermediates: false
+  keep_logs: true
+  keep_plots: true
+  
+  # Publication ready outputs
+  publication:
+    enabled: true
+    formats: ["png", "pdf", "svg"]
+    tables: ["csv", "xlsx"]
+
+# Validation and Testing
+validation:
+  # Test data
+  test_data:
+    enabled: true
+    location: "test_data/"
+    expected_results: "test_data/expected/"
+  
+  # Quality thresholds
+  thresholds:
+    min_samples_pass_qc: 0.8
+    min_genes_detected: 10000
+    max_batch_effect: 0.3
+    min_rejuvenation_samples: 5

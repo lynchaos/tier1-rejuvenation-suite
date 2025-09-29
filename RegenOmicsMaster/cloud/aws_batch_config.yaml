@@ -1,0 +1,55 @@
+# AWS Batch Configuration for RegenOmics Master Pipeline
+
+# Job Definition
+apiVersion: batch/v1
+kind: JobDefinition
+metadata:
+  name: regenomics-pipeline
+spec:
+  type: container
+  containerProperties:
+    image: regenomics/pipeline:latest
+    vcpus: 4
+    memory: 8192
+    jobRoleArn: arn:aws:iam::ACCOUNT:role/BatchExecutionRole
+    environment:
+      - name: AWS_DEFAULT_REGION
+        value: us-east-1
+  retryStrategy:
+    attempts: 3
+  timeout:
+    attemptDurationSeconds: 14400
+---
+# Job Queue
+apiVersion: batch/v1
+kind: JobQueue
+metadata:
+  name: regenomics-queue
+spec:
+  state: ENABLED
+  priority: 1
+  computeEnvironmentOrder:
+    - order: 1
+      computeEnvironment: regenomics-compute-env
+---
+# Compute Environment
+apiVersion: batch/v1
+kind: ComputeEnvironment
+metadata:
+  name: regenomics-compute-env
+spec:
+  type: MANAGED
+  state: ENABLED
+  computeResources:
+    type: EC2
+    minvCpus: 0
+    maxvCpus: 256
+    desiredvCpus: 0
+    instanceTypes:
+      - m5.large
+      - m5.xlarge
+    subnets:
+      - subnet-12345
+    securityGroupIds:
+      - sg-abcde
+    instanceRole: arn:aws:iam::ACCOUNT:instance-profile/ecsInstanceRole

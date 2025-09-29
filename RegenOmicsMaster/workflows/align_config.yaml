@@ -1,0 +1,14 @@
+# Alignment configuration for RegenOmics Master Pipeline
+species: auto  # Options: auto, human, mouse, primate
+aligner: STAR  # Options: STAR, Salmon
+reference_paths:
+  human: /path/to/human_reference
+  mouse: /path/to/mouse_reference
+  primate: /path/to/primate_reference
+options:
+  STAR:
+    threads: 8
+    outSAMtype: BAM SortedByCoordinate
+  Salmon:
+    threads: 8
+    libType: A

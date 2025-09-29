@@ -1,0 +1,300 @@
+# RegenOmics Master Pipeline: Production Snakemake Workflow
+
+import os
+import pandas as pd
+from pathlib import Path
+
+# Configuration
+configfile: "config.yaml"
+
+# Get sample names from input files
+SAMPLES, = glob_wildcards("data/{sample}.fastq.gz")
+
+# Reference genomes
+REFERENCES = {
+    "human": "references/human/GRCh38",
+    "mouse": "references/mouse/GRCm39", 
+    "primate": "references/primate/Mmul_10"
+}
+
+rule all:
+    input:
+        # QC outputs
+        expand("results/qc/fastqc/{sample}_fastqc.zip", sample=SAMPLES),
+        "results/qc/multiqc_report.html",
+        
+        # Alignment outputs
+        expand("results/alignment/{sample}.bam", sample=SAMPLES),
+        expand("results/alignment/{sample}.bam.bai", sample=SAMPLES),
+        
+        # Count outputs
+        expand("results/counts/{sample}_counts.txt", sample=SAMPLES),
+        
+        # Analysis outputs
+        "results/differential_expression/differential_expression.csv",
+        "results/ml_results/ml_predictions.csv",
+        
+        # Final report
+        "results/reports/final_report.html"
+
+rule fastqc:
+    input:
+        "data/{sample}.fastq.gz"
+    output:
+        html="results/qc/fastqc/{sample}_fastqc.html",
+        zip="results/qc/fastqc/{sample}_fastqc.zip"
+    params:
+        outdir="results/qc/fastqc"
+    threads: config.get("threads", 4)
+    shell:
+        """
+        fastqc {input} -o {params.outdir} -t {threads} --quiet
+        """
+
+rule multiqc:
+    input:
+        expand("results/qc/fastqc/{sample}_fastqc.zip", sample=SAMPLES)
+    output:
+        html="results/qc/multiqc_report.html",
+        data=directory("results/qc/multiqc_data")
+    params:
+        indir="results/qc/fastqc",
+        outdir="results/qc"
+    shell:
+        """
+        multiqc {params.indir} -o {params.outdir} \
+            --filename multiqc_report.html \
+            --title "RegenOmics QC Report" \
+            --comment "Quality control for regenerative biology analysis"
+        """
+
+rule detect_species:
+    input:
+        "data/{sample}.fastq.gz"
+    output:
+        "results/species_detection/{sample}_species.txt"
+    shell:
+        """
+        mkdir -p results/species_detection
+        
+        # Extract sample for species detection
+        seqtk sample {input} 10000 > temp_sample.fastq
+        
+        # Calculate GC content for species assignment
+        python3 -c "
+import sys
+from Bio import SeqIO
+
+gc_content = 0
+total_bases = 0
+
+with open('temp_sample.fastq', 'r') as f:
+    for record in SeqIO.parse(f, 'fastq'):
+        seq = str(record.seq).upper()
+        gc_content += seq.count('G') + seq.count('C')
+        total_bases += len(seq)
+
+if total_bases > 0:
+    gc_ratio = gc_content / total_bases
+    
+    if 0.40 <= gc_ratio <= 0.42:
+        species = 'human'
+    elif 0.42 <= gc_ratio <= 0.44:
+        species = 'mouse'
+    elif 0.38 <= gc_ratio <= 0.40:
+        species = 'primate'
+    else:
+        species = 'human'  # default
+else:
+    species = 'human'
+
+with open('{output}', 'w') as f:
+    f.write(species)
+"
+        
+        rm temp_sample.fastq
+        """
+
+rule star_align:
+    input:
+        fastq="data/{sample}.fastq.gz",
+        species="results/species_detection/{sample}_species.txt"
+    output:
+        bam="results/alignment/{sample}.bam",
+        log="results/alignment/{sample}_Log.final.out",
+        counts="results/alignment/{sample}_ReadsPerGene.out.tab"
+    params:
+        prefix="results/alignment/{sample}_",
+        index=lambda wildcards, input: REFERENCES[open(input.species).read().strip()]
+    threads: config.get("threads", 8)
+    shell:
+        """
+        STAR --runMode alignReads \
+             --genomeDir {params.index} \
+             --readFilesIn {input.fastq} \
+             --readFilesCommand zcat \
+             --outFileNamePrefix {params.prefix} \
+             --outSAMtype BAM SortedByCoordinate \
+             --outSAMunmapped Within \
+             --outSAMattributes Standard \
+             --runThreadN {threads} \
+             --quantMode GeneCounts \
+             --limitBAMsortRAM 31000000000
+        
+        # Rename output files
+        mv {params.prefix}Aligned.sortedByCoord.out.bam {output.bam}
+        """
+
+rule index_bam:
+    input:
+        "results/alignment/{sample}.bam"
+    output:
+        "results/alignment/{sample}.bam.bai"
+    shell:
+        "samtools index {input}"
+
+rule count_features:
+    input:
+        bam="results/alignment/{sample}.bam",
+        bai="results/alignment/{sample}.bam.bai"
+    output:
+        "results/counts/{sample}_counts.txt"
+    params:
+        annotation="references/annotation.gtf"
+    threads: config.get("threads", 4)
+    shell:
+        """
+        featureCounts -a {params.annotation} \
+                      -o {output} \
+                      -T {threads} \
+                      -g gene_id \
+                      -t exon \
+                      -s 2 \
+                      {input.bam}
+        """
+
+rule differential_expression:
+    input:
+        counts=expand("results/counts/{sample}_counts.txt", sample=SAMPLES)
+    output:
+        results="results/differential_expression/differential_expression.csv",
+        matrix="results/differential_expression/expression_matrix_for_ml.csv",
+        report="results/differential_expression/de_analysis_report.html"
+    script:
+        "scripts/differential_expression_analysis.py"
+
+rule ml_scoring:
+    input:
+        "results/differential_expression/expression_matrix_for_ml.csv"
+    output:
+        predictions="results/ml_results/ml_predictions.csv",
+        performance="results/ml_results/model_performance.json"
+    shell:
+        """
+        cd ml
+        python cell_rejuvenation_scoring.py
+        
+        # Copy results
+        cp ml_predictions.csv ../results/ml_results/
+        
+        # Generate performance summary
+        python3 -c "
+import json
+import pandas as pd
+
+# Load predictions
+df = pd.read_csv('ml_predictions.csv', index_col=0)
+
+# Calculate summary statistics
+performance = {{
+    'samples_processed': len(df),
+    'mean_rejuvenation_score': float(df['rejuvenation_score'].mean()),
+    'std_rejuvenation_score': float(df['rejuvenation_score'].std()),
+    'min_score': float(df['rejuvenation_score'].min()),
+    'max_score': float(df['rejuvenation_score'].max()),
+    'highly_rejuvenated_samples': int((df['rejuvenation_score'] > 0.8).sum()),
+    'aged_samples': int((df['rejuvenation_score'] < 0.2).sum())
+}}
+
+with open('../results/ml_results/model_performance.json', 'w') as f:
+    json.dump(performance, f, indent=2)
+"
+        """
+
+rule generate_report:
+    input:
+        qc="results/qc/multiqc_report.html",
+        ml="results/ml_results/ml_predictions.csv",
+        performance="results/ml_results/model_performance.json"
+    output:
+        report="results/reports/final_report.html",
+        summary="results/reports/pipeline_summary.json"
+    shell:
+        """
+        mkdir -p results/reports
+        
+        python3 workflows/generate_report.py \
+            --multiqc {input.qc} \
+            --ml-results {input.ml} \
+            --performance {input.performance} \
+            --output {output.report}
+        
+        # Generate pipeline summary
+        python3 -c "
+import json
+import os
+from datetime import datetime
+
+summary = {{
+    'pipeline': 'RegenOmics Master Pipeline',
+    'version': '1.0.0',
+    'execution_time': datetime.now().isoformat(),
+    'samples_processed': len({SAMPLES!r}),
+    'output_directory': 'results/',
+    'processing_complete': True,
+    'key_outputs': {{
+        'qc_report': 'results/qc/multiqc_report.html',
+        'ml_predictions': 'results/ml_results/ml_predictions.csv',
+        'final_report': 'results/reports/final_report.html'
+    }}
+}}
+
+with open('{output.summary}', 'w') as f:
+    json.dump(summary, f, indent=2)
+"
+        """
+
+# Helper rules for pipeline management
+
+rule clean:
+    shell:
+        "rm -rf results/"
+
+rule clean_temp:
+    shell:
+        """
+        find results/ -name "*.tmp" -delete
+        find results/ -name "temp_*" -delete
+        """
+
+rule pipeline_stats:
+    input:
+        "results/reports/pipeline_summary.json"
+    shell:
+        """
+        echo "RegenOmics Master Pipeline Statistics:"
+        echo "====================================="
+        python3 -c "
+import json
+with open('{input}') as f:
+    stats = json.load(f)
+
+for key, value in stats.items():
+    if isinstance(value, dict):
+        print(f'{key}:')
+        for subkey, subvalue in value.items():
+            print(f'  {subkey}: {subvalue}')
+    else:
+        print(f'{key}: {value}')
+"
+        """
