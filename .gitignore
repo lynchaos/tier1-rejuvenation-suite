@@ -76,6 +76,9 @@ figures/*.pdf
 # Reports (keep the main one, exclude temporary ones)
 *_temp_report.html
 *_backup.html
+*_Integration_Report.html
+TIER1_Integration_Report.html
+*.html
 
 # Personal content
 LINKEDIN_POST.md
