@@ -21,8 +21,10 @@ class RejuvenationAnalyzer:
         self.adata = adata
     
     def preprocess_data(self):
-        """Standard single-cell preprocessing pipeline"""
-        # Basic filtering
+        """Preprocess single-cell data with robust filtering"""
+        print("Starting Single-Cell Rejuvenation Analysis...")
+        
+        # Basic filtering with safety checks
         sc.pp.filter_cells(self.adata, min_genes=200)
         sc.pp.filter_genes(self.adata, min_cells=3)
         
@@ -30,23 +32,34 @@ class RejuvenationAnalyzer:
         self.adata.var['mt'] = self.adata.var_names.str.startswith('MT-')
         sc.pp.calculate_qc_metrics(self.adata, percent_top=None, log1p=False, inplace=True)
         
-        # Filter cells and genes
-        sc.pp.filter_cells(self.adata, min_genes=200)
-        sc.pp.filter_genes(self.adata, min_cells=3)
-        
-        # Normalize and log transform
+        # Normalization and log transformation
         sc.pp.normalize_total(self.adata, target_sum=1e4)
         sc.pp.log1p(self.adata)
         
-        # Store raw data
+        # Find highly variable genes with robust parameters
+        try:
+            sc.pp.highly_variable_genes(self.adata, min_mean=0.0125, max_mean=3, min_disp=0.5)
+        except Exception as e:
+            print(f"Using fallback highly variable gene detection: {e}")
+            # Fallback: select top variable genes
+            import numpy as np
+            gene_var = np.var(self.adata.X.toarray(), axis=0)
+            n_top_genes = min(2000, len(gene_var))
+            top_genes_idx = np.argsort(gene_var)[-n_top_genes:]
+            self.adata.var['highly_variable'] = False
+            self.adata.var.iloc[top_genes_idx, self.adata.var.columns.get_loc('highly_variable')] = True
+        
+        # Keep raw data
         self.adata.raw = self.adata
         
-        # Find highly variable genes
-        sc.pp.highly_variable_genes(self.adata, min_mean=0.0125, max_mean=3, min_disp=0.5)
-        self.adata = self.adata[:, self.adata.var.highly_variable]
+        # Filter to highly variable genes
+        if 'highly_variable' in self.adata.var.columns:
+            self.adata = self.adata[:, self.adata.var.highly_variable]
+        
+        # Scale data
+        sc.pp.scale(self.adata, max_value=10)
         
         print("Preprocessing complete")
-        return self.adata
     
     def trajectory_inference(self):
         """Aging → rejuvenation trajectory analysis"""

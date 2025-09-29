@@ -31,22 +31,45 @@ ENV/
 # Jupyter Notebook
 .ipynb_checkpoints
 
+# Generated data directories (will be recreated)
+demo_data/
+real_data/
+models/
+figures/
+
 # Data files (large datasets)
 *.h5
 *.h5ad
 *.xlsx
 *.csv
-demo_data/*.csv
-demo_data/*.h5
-
-# Model files (can be large)
-models/*.pkl
-models/*.joblib
+*.pkl
+*.joblib
 *.model
 
 # Logs
 *.log
 logs/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
 
 # OS generated files
 .DS_Store
@@ -88,3 +111,5 @@ personal_notes.md
 GITHUB_ENHANCEMENT_CHECKLIST.md
 PROJECT_SUMMARY.md
 *_SUMMARY.md
+DATASETS.md
+tier1_interactive.py
