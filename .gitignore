@@ -36,6 +36,7 @@ demo_data/
 real_data/
 models/
 figures/
+reports/
 
 # Data files (large datasets)
 *.h5
@@ -112,4 +113,7 @@ GITHUB_ENHANCEMENT_CHECKLIST.md
 PROJECT_SUMMARY.md
 *_SUMMARY.md
 DATASETS.md
-tier1_interactive.py
+# Temporary files
+*.tmp
+*.temp
+*.bak
