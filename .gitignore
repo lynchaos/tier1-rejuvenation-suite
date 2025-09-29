@@ -76,3 +76,10 @@ figures/*.pdf
 # Reports (keep the main one, exclude temporary ones)
 *_temp_report.html
 *_backup.html
+
+# Personal content
+LINKEDIN_POST.md
+linkedin_*.md
+*_linkedin.md
+personal_notes.md
+GITHUB_ENHANCEMENT_CHECKLIST.md
