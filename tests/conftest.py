@@ -20,8 +20,8 @@ def sample_bulk_data():
     # Generate expression data with some structure
     data = np.random.lognormal(mean=2, sigma=1, size=(n_samples, n_features))
     
-    # Add some missing values
-    missing_mask = np.random.random((n_samples, n_features)) < 0.05
+    # Add some missing values (reduced to ensure some complete samples)
+    missing_mask = np.random.random((n_samples, n_features)) < 0.001
     data[missing_mask] = np.nan
     
     # Create sample and feature names

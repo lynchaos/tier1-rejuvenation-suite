@@ -41,9 +41,13 @@ class TestDataLeakage:
         
         # INCORRECT: Fit scaler on all data (data leakage)
         scaler_incorrect = StandardScaler()
-        X_all_scaled = scaler_incorrect.fit_transform(X_clean)
-        X_train_scaled_incorrect = X_all_scaled[X_train.index]
-        X_test_scaled_incorrect = X_all_scaled[X_test.index]
+        X_all_scaled_df = pd.DataFrame(
+            scaler_incorrect.fit_transform(X_clean), 
+            index=X_clean.index, 
+            columns=X_clean.columns
+        )
+        X_train_scaled_incorrect = X_all_scaled_df.loc[X_train.index].values
+        X_test_scaled_incorrect = X_all_scaled_df.loc[X_test.index].values
         
         # Test that correct and incorrect approaches give different results
         # (This demonstrates that fitting on all data vs. training only matters)
