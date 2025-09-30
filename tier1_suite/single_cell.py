@@ -7,6 +7,11 @@ Main analyzer class for single-cell RNA-seq data processing,
 quality control, dimensionality reduction, clustering, and trajectory analysis.
 """
 
+import sys
+import warnings
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 try:
     import scanpy as sc
 
@@ -14,10 +19,6 @@ try:
 except ImportError:
     SCANPY_AVAILABLE = False
     sc = None
-
-import warnings
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 import anndata
 import numpy as np
@@ -31,12 +32,10 @@ if SCANPY_AVAILABLE:
     sc.settings.set_figure_params(dpi=80, facecolor="white")
 
 # Import existing components
-import sys
-
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from SingleCellRejuvenationAtlas.python.biologically_validated_analyzer import (
+from SingleCellRejuvenationAtlas.python.biologically_validated_analyzer import (  # noqa: E402
     BiologicallyValidatedAnalyzer,
 )
 

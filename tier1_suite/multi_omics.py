@@ -8,6 +8,7 @@ fusion analysis, and comprehensive evaluation.
 """
 
 import pickle
+import sys
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -18,12 +19,10 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 
 # Import existing components
-import sys
-
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from MultiOmicsFusionIntelligence.integration.biologically_validated_integrator import (
+from MultiOmicsFusionIntelligence.integration.biologically_validated_integrator import (  # noqa: E402
     BiologicallyValidatedIntegrator,
 )
 

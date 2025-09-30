@@ -8,6 +8,7 @@ and comprehensive biomarker validation.
 """
 
 import pickle
+import sys
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -22,12 +23,10 @@ from sklearn.preprocessing import StandardScaler
 warnings.filterwarnings("ignore")
 
 # Import existing components
-import sys
-
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from RegenOmicsMaster.ml.biologically_validated_scorer import (
+from RegenOmicsMaster.ml.biologically_validated_scorer import (  # noqa: E402
     BiologicallyValidatedRejuvenationScorer,
 )
 

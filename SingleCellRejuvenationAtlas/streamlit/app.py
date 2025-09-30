@@ -343,7 +343,11 @@ elif analysis_type == "Digital Twin Simulator":
             )
 
             # DNA damage dynamics (repaired by treatment)
-            dD_dt = -0.2 * dna_repair * treatment * D - 0.1 * A * D + 0.04 * Inflam * (1 - D)
+            dD_dt = (
+                -0.2 * dna_repair * treatment * D
+                - 0.1 * A * D
+                + 0.04 * Inflam * (1 - D)
+            )
 
             # Metabolic health dynamics (optimized by treatment)
             dM_dt = (

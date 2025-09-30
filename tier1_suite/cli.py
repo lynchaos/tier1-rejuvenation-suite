@@ -18,9 +18,10 @@ from rich.table import Table
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from tier1_suite.bulk_cli import bulk_app
-from tier1_suite.multi_omics_cli import multi_app
-from tier1_suite.single_cell_cli import sc_app
+# Import tier1 suite components after path modification
+from tier1_suite.bulk_cli import bulk_app  # noqa: E402
+from tier1_suite.multi_omics_cli import multi_app  # noqa: E402
+from tier1_suite.single_cell_cli import sc_app  # noqa: E402
 
 # Initialize Typer app and Rich console
 app = typer.Typer(

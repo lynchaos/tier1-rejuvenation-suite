@@ -278,7 +278,7 @@ class DifferentialExpressionAnalyzer:
             else:
                 return None, design_matrix
 
-        except:
+        except Exception:
             return None, design_matrix
 
     def perform_differential_expression(self, reference_condition="young"):
@@ -290,7 +290,7 @@ class DifferentialExpressionAnalyzer:
         )
 
         conditions = self.sample_info["condition"].values
-        self.sample_info["batch"].values
+        _ = self.sample_info["batch"].values  # Reserved for batch correction
 
         # Get unique conditions for comparisons
         unique_conditions = [
@@ -302,7 +302,9 @@ class DifferentialExpressionAnalyzer:
         all_results = []
 
         for gene in self.count_matrix_filtered.index:
-            self.count_matrix_filtered.loc[gene].values
+            _ = self.count_matrix_filtered.loc[
+                gene
+            ].values  # Reserved for future analysis
 
             # Simple approach: use t-test on log-transformed data
             # In production, would use proper negative binomial GLM
