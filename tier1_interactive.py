@@ -470,9 +470,11 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         try:
             from scientific_reporter import generate_comprehensive_report
             
-            report_type = "Scientifically Corrected RegenOmics Pipeline" if is_corrected else "RegenOmics Master Pipeline"
-            print(f"\n📋 Generating {report_type.lower()} report...")
+            report_name = "RegenOmics (Corrected)" if is_corrected else "RegenOmics"
+            print(f"\n📋 Generating {report_name} report...")
             
+            # Standardized payload and metadata
+            payload = {"results": result_df}
             metadata = {
                 'dataset_name': data_path.split('/')[-1] if isinstance(data_path, str) else "Generated Dataset",
                 'bootstrap_samples': 100,
@@ -483,10 +485,12 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
                 'memory_usage': 'N/A',
                 'biological_validation': is_corrected,
                 'age_stratified': is_corrected,
-                'peer_reviewed_markers': is_corrected
+                'peer_reviewed_markers': is_corrected,
+                'n_samples': len(result_df),
+                'corrected': is_corrected
             }
             
-            report_path = generate_comprehensive_report(report_type, result_df, metadata)
+            report_path = generate_comprehensive_report(report_name, payload, metadata)
             print(f"📄 Scientific report saved: {report_path}")
             
             if is_corrected:
@@ -591,6 +595,8 @@ def run_single_cell_atlas(data_path: str, data_type: str) -> bool:
             from scientific_reporter import generate_comprehensive_report
             
             print(f"\n📋 Generating comprehensive scientific report...")
+            
+            # Standardized payload and metadata
             analysis_results = {
                 'rejuvenation_detected': True,
                 'pca_variance': 'N/A',
@@ -607,7 +613,15 @@ def run_single_cell_atlas(data_path: str, data_type: str) -> bool:
                 'mt_threshold': 20
             }
             
-            report_path = generate_comprehensive_report("Single-Cell Rejuvenation Atlas", (adata, analysis_results))
+            payload = {"adata_path": str(data_path), "summary": analysis_results}
+            metadata = {
+                "n_cells": int(adata.n_obs), 
+                "n_genes": int(adata.n_vars), 
+                "corrected": is_corrected,
+                "available_annotations": list(adata.obs.columns)
+            }
+            
+            report_path = generate_comprehensive_report("Single-Cell Rejuvenation Atlas", payload, metadata)
             print(f"📄 Scientific report saved: {report_path}")
             print(f"🔬 Report includes: trajectory analysis, clustering validation, biological interpretation")
             
@@ -713,6 +727,9 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
             from scientific_reporter import generate_comprehensive_report
             
             print(f"\n📋 Generating comprehensive scientific report...")
+            
+            # Standardized payload and metadata
+            payload = {"features": features.tolist()}
             metadata = {
                 'n_omics': 2,  # RNA-seq and Proteomics
                 'original_features': rnaseq.shape[1] + proteomics.shape[1],
@@ -733,10 +750,13 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
                 'cv_loss_std': 'N/A',
                 'model_stability': 'N/A',
                 'hidden_1': 512,
-                'hidden_2': 256
+                'hidden_2': 256,
+                'corrected': is_corrected,
+                'n_samples': features.shape[0],
+                'latent_dimensions': features.shape[1]
             }
             
-            report_path = generate_comprehensive_report("Multi-Omics Fusion Intelligence", features, metadata)
+            report_path = generate_comprehensive_report("Multi-Omics Fusion Intelligence", payload, metadata)
             print(f"📄 Scientific report saved: {report_path}")
             print(f"🔬 Report includes: integration methodology, systems biology insights, clinical applications")
             
