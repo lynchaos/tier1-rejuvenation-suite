@@ -830,7 +830,7 @@ if __name__ == "__main__":
     try:
         adata = sc.datasets.pbmc3k_processed()
         print(f"Loaded PBMC dataset: {adata.n_obs} cells, {adata.n_vars} genes")
-    except:
+    except Exception:
         # Fallback to simpler dataset
         adata = sc.datasets.krumsiek11()
         print(f"Loaded Krumsiek dataset: {adata.n_obs} cells, {adata.n_vars} genes")

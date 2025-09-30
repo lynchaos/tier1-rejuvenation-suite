@@ -83,7 +83,7 @@ def run_qc(
 
     except Exception as e:
         console.print(f"❌ [red]Error during QC: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @sc_app.command()
@@ -146,7 +146,7 @@ def run_embed(
 
     except Exception as e:
         console.print(f"❌ [red]Error during embedding: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @sc_app.command()
@@ -203,7 +203,7 @@ def cluster(
 
     except Exception as e:
         console.print(f"❌ [red]Error during clustering: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @sc_app.command()
@@ -265,7 +265,7 @@ def paga(
 
     except Exception as e:
         console.print(f"❌ [red]Error during PAGA analysis: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @sc_app.command()
@@ -315,7 +315,7 @@ def pipeline(
 
     except Exception as e:
         console.print(f"❌ [red]Error in pipeline: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 if __name__ == "__main__":

@@ -78,7 +78,7 @@ def fit(
 
     except Exception as e:
         console.print(f"❌ [red]Error during integration fitting: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @multi_app.command()
@@ -134,7 +134,7 @@ def embed(
 
     except Exception as e:
         console.print(f"❌ [red]Error during embedding: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @multi_app.command()
@@ -197,7 +197,7 @@ def eval(
 
     except Exception as e:
         console.print(f"❌ [red]Error during evaluation: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @multi_app.command()
@@ -264,7 +264,7 @@ def discover_biomarkers(
 
     except Exception as e:
         console.print(f"❌ [red]Error during biomarker discovery: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @multi_app.command()
@@ -318,7 +318,7 @@ def pipeline(
 
     except Exception as e:
         console.print(f"❌ [red]Error in multi-omics pipeline: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 if __name__ == "__main__":
