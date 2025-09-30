@@ -1,0 +1,279 @@
+# Default configuration for TIER 1 Rejuvenation Suite
+# This file contains all default hyperparameters and settings
+
+# Global settings
+global:
+  project_name: "tier1_rejuvenation_suite"
+  version: "1.0.0"
+  random_seeds:
+    python: 42
+    numpy: 42
+    torch: 42
+  
+  # Logging configuration
+  logging:
+    level: "INFO"
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    file: "tier1_suite.log"
+    console: true
+  
+  # Output directories
+  output:
+    base_dir: "outputs"
+    models_dir: "models"
+    figures_dir: "figures"
+    data_dir: "processed_data"
+    logs_dir: "logs"
+    provenance_dir: "provenance"
+
+# Data processing configuration
+data:
+  # File paths and formats
+  input:
+    format: "csv"
+    encoding: "utf-8"
+    separator: ","
+    header: 0
+    index_col: null
+  
+  output:
+    format: "csv"
+    encoding: "utf-8"
+    separator: ","
+    index: false
+  
+  # Quality control
+  quality:
+    missing_threshold: 0.1  # Maximum fraction of missing values allowed
+    variance_threshold: 0.01  # Minimum variance required
+    correlation_threshold: 0.95  # Maximum correlation for feature removal
+    outlier_method: "iqr"  # Method for outlier detection: iqr, zscore, isolation
+    outlier_threshold: 3.0  # Threshold for outlier detection
+  
+  # Data validation
+  validation:
+    check_duplicates: true
+    check_missing: true
+    check_outliers: true
+    check_distributions: true
+    generate_report: true
+
+# Analysis configuration
+analysis:
+  # Cross-validation settings
+  cross_validation:
+    method: "stratified_kfold"  # stratified_kfold, kfold, group_kfold, time_series
+    n_splits: 5
+    shuffle: true
+    test_size: 0.2
+    validation_size: 0.2
+  
+  # Feature selection
+  feature_selection:
+    enabled: true
+    method: "recursive_elimination"  # recursive_elimination, univariate, lasso, tree_based
+    n_features: "auto"  # Number of features to select or "auto"
+    scoring: "accuracy"
+  
+  # Hyperparameter optimization
+  hyperparameter_tuning:
+    enabled: true
+    method: "random_search"  # grid_search, random_search, bayesian
+    n_iter: 100  # Number of iterations for random/bayesian search
+    cv_folds: 3  # Cross-validation folds for hyperparameter tuning
+    scoring: "accuracy"
+    n_jobs: -1
+  
+  # Model evaluation
+  evaluation:
+    metrics:
+      - "accuracy"
+      - "precision"
+      - "recall"
+      - "f1"
+      - "roc_auc"
+    generate_plots: true
+    save_predictions: true
+    save_probabilities: true
+
+# Multi-omics specific configuration
+multi_omics:
+  # Data integration methods
+  integration:
+    method: "early_fusion"  # early_fusion, late_fusion, intermediate_fusion
+    normalization: "z_score"  # z_score, min_max, robust, quantile
+    batch_correction: false
+    batch_method: "combat"  # combat, limma, harmony
+  
+  # Omics-specific processing
+  genomics:
+    variant_filtering:
+      maf_threshold: 0.01  # Minor allele frequency threshold
+      hwe_threshold: 0.001  # Hardy-Weinberg equilibrium p-value threshold
+      call_rate_threshold: 0.95  # Minimum call rate
+    
+    pathway_analysis:
+      enabled: false
+      database: "kegg"  # kegg, reactome, go
+      enrichment_method: "gsea"  # gsea, ora, camera
+  
+  transcriptomics:
+    normalization: "log2_tpm"  # log2_tpm, log2_fpkm, vst, rlog
+    filtering:
+      min_expression: 1.0
+      min_samples: 5
+    
+    differential_expression:
+      method: "deseq2"  # deseq2, edger, limma
+      p_value_threshold: 0.05
+      log_fold_change_threshold: 1.0
+  
+  proteomics:
+    normalization: "median_centering"
+    imputation: "knn"  # knn, mean, median, mice
+    batch_correction: true
+  
+  metabolomics:
+    scaling: "pareto"  # pareto, unit_variance, mean_centering
+    transformation: "log"  # log, sqrt, box_cox
+    normalization: "probabilistic_quotient"
+
+# Model-specific configurations
+models:
+  # Linear models
+  logistic_regression:
+    C: 1.0
+    penalty: "l2"  # l1, l2, elasticnet
+    solver: "lbfgs"  # lbfgs, liblinear, sag, saga
+    max_iter: 1000
+    class_weight: "balanced"
+  
+  # Tree-based models
+  random_forest:
+    n_estimators: 100
+    max_depth: null
+    min_samples_split: 2
+    min_samples_leaf: 1
+    max_features: "sqrt"  # sqrt, log2, auto
+    bootstrap: true
+    class_weight: "balanced"
+    n_jobs: -1
+  
+  gradient_boosting:
+    n_estimators: 100
+    learning_rate: 0.1
+    max_depth: 3
+    min_samples_split: 2
+    min_samples_leaf: 1
+    subsample: 1.0
+    max_features: null
+  
+  # Support Vector Machine
+  svm:
+    C: 1.0
+    kernel: "rbf"  # linear, poly, rbf, sigmoid
+    gamma: "scale"  # scale, auto, float
+    class_weight: "balanced"
+    probability: true
+  
+  # Neural networks
+  mlp:
+    hidden_layer_sizes: [100]
+    activation: "relu"  # identity, logistic, tanh, relu
+    solver: "adam"  # lbfgs, sgd, adam
+    alpha: 0.0001
+    learning_rate: "constant"  # constant, invscaling, adaptive
+    max_iter: 200
+    early_stopping: true
+    validation_fraction: 0.1
+
+# Provenance tracking
+provenance:
+  enabled: true
+  track_git: true
+  track_environment: true
+  track_data_hashes: true
+  track_model_params: true
+  track_performance: true
+  save_artifacts: true
+  
+  # What to include in provenance
+  include:
+    command_line_args: true
+    environment_variables: false  # Set to true to include all env vars (security consideration)
+    system_info: true
+    git_info: true
+    package_versions: true
+    random_seeds: true
+    hyperparameters: true
+    data_fingerprints: true
+    model_artifacts: true
+    performance_metrics: true
+    execution_time: true
+
+# Computational resources
+compute:
+  # Parallel processing
+  n_jobs: -1  # Number of parallel jobs (-1 for all cores)
+  backend: "threading"  # threading, multiprocessing, dask
+  
+  # Memory management
+  memory_limit: "8GB"
+  chunk_size: 10000  # For processing large datasets in chunks
+  
+  # GPU settings (if available)
+  use_gpu: false
+  gpu_memory_fraction: 0.8
+
+# Reproducibility settings
+reproducibility:
+  deterministic: true
+  fix_random_seeds: true
+  record_environment: true
+  save_intermediate_results: false
+  cache_computations: true
+  cache_directory: ".tier1_cache"
+
+# Experiment tracking
+experiment:
+  enabled: false  # Enable experiment tracking (e.g., with MLflow, Weights & Biases)
+  backend: "mlflow"  # mlflow, wandb, neptune
+  
+  # MLflow specific settings
+  mlflow:
+    tracking_uri: "file:./mlruns"
+    experiment_name: "tier1_rejuvenation_suite"
+    artifact_location: null
+  
+  # Weights & Biases settings
+  wandb:
+    project: "tier1-rejuvenation-suite"
+    entity: null
+    tags: []
+
+# Data governance and ethics
+governance:
+  # Data use and privacy
+  data_privacy:
+    anonymize_outputs: true
+    remove_identifiers: true
+    encryption_required: false
+  
+  # Compliance
+  compliance:
+    gdpr_compliant: true
+    hipaa_compliant: false
+    institutional_review_board: false
+  
+  # Ethical considerations
+  ethics:
+    bias_assessment: true
+    fairness_metrics: true
+    interpretability_required: true
+    human_oversight: true
+  
+  # Audit trail
+  audit:
+    log_data_access: true
+    log_model_predictions: false
+    retention_period_days: 365

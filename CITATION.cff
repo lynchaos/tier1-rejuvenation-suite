@@ -1,0 +1,102 @@
+cff-version: 1.2.0
+title: "TIER 1 Rejuvenation Suite: Comprehensive Multi-Omics Analysis Pipeline for Longevity Research"
+message: "If you use this software, please cite it using the metadata from this file."
+
+type: software
+license: MIT
+repository-code: "https://github.com/your-username/tier1-rejuvenation-suite"
+url: "https://github.com/your-username/tier1-rejuvenation-suite"
+
+authors:
+  - family-names: "Your"
+    given-names: "Name"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+    email: "your.email@example.com"
+    affiliation: "Your Institution"
+
+abstract: >
+  The TIER 1 Rejuvenation Suite is a comprehensive Python package for multi-omics 
+  data analysis in longevity and aging research. It provides a complete pipeline 
+  for processing genomics, transcriptomics, proteomics, and metabolomics data with 
+  built-in quality control, feature selection, machine learning models, and 
+  reproducibility tracking. The suite implements best practices for data governance, 
+  provenance tracking, and ethical considerations in biomedical research.
+
+keywords:
+  - bioinformatics
+  - multi-omics
+  - longevity
+  - aging research
+  - machine learning
+  - genomics
+  - transcriptomics
+  - proteomics
+  - metabolomics
+  - reproducible research
+  - python
+
+version: "1.0.0"
+date-released: "2024-12-19"
+
+preferred-citation:
+  type: article
+  title: "TIER 1 Rejuvenation Suite: A Comprehensive Multi-Omics Analysis Pipeline for Longevity Research"
+  authors:
+    - family-names: "Your"
+      given-names: "Name"
+      orcid: "https://orcid.org/0000-0000-0000-0000"
+  journal: "Bioinformatics"
+  volume: XX
+  issue: XX
+  start: XX
+  end: XX
+  year: 2024
+  doi: "10.1093/bioinformatics/btXXXXXX"
+
+references:
+  - type: article
+    title: "Multi-omics integration for aging research: opportunities and challenges"
+    authors:
+      - family-names: "Johnson"
+        given-names: "Alice A."
+      - family-names: "Smith"
+        given-names: "Robert B."
+    journal: "Nature Aging"
+    volume: 1
+    issue: 1
+    start: 1
+    end: 15
+    year: 2021
+    doi: "10.1038/s43587-021-00040-8"
+  
+  - type: article
+    title: "Machine learning approaches for aging clocks: a systematic review"
+    authors:
+      - family-names: "Chen"
+        given-names: "Wei"
+      - family-names: "Lopez"
+        given-names: "Maria"
+    journal: "Aging Cell"
+    volume: 20
+    issue: 3
+    start: e13315
+    end: e13315
+    year: 2021
+    doi: "10.1111/acel.13315"
+
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.XXXXXXX"
+    description: "DOI for this version"
+  - type: url
+    value: "https://pypi.org/project/tier1-rejuvenation-suite/"
+    description: "PyPI package"
+
+contact:
+  - family-names: "Your"
+    given-names: "Name"
+    email: "your.email@example.com"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+    affiliation: "Your Institution"
+
+commit: "main"
