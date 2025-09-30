@@ -830,3 +830,216 @@ if __name__ == '__main__':
     # Note: This would run with real data files
     print("Example setup complete. Run with actual multi-omics data files.")
     print("Expected file format: CSV files with samples as rows, features as columns")
+
+# Create alias for CLI compatibility with additional methods
+class BiologicallyValidatedIntegrator(BiologicallyValidatedMultiOmicsIntegrator):
+    """
+    Alias for CLI compatibility - extends the main integrator with additional methods
+    needed for the multi-omics CLI interface.
+    """
+    
+    def __init__(self):
+        """Initialize without requiring parameters for CLI compatibility"""
+        super().__init__(latent_dim=128, device='cpu', random_state=42)
+    
+    def preprocess_with_biomarkers(self, omics_data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
+        """Preprocess omics data using biological knowledge"""
+        
+        processed_data = {}
+        
+        for omics_type, data in omics_data.items():
+            # Apply omics-specific preprocessing
+            if omics_type == 'rna':
+                # RNA-seq specific: log transformation, highly variable genes
+                data_processed = data.copy()
+                # Log transform if not already done
+                if data_processed.min().min() >= 0 and data_processed.max().max() > 100:
+                    data_processed = np.log1p(data_processed)
+                
+            elif omics_type == 'protein':
+                # Protein data: robust scaling
+                scaler = RobustScaler()
+                data_processed = pd.DataFrame(
+                    scaler.fit_transform(data),
+                    index=data.index,
+                    columns=data.columns
+                )
+                
+            elif omics_type == 'metabolite':
+                # Metabolite data: standardization
+                scaler = StandardScaler()
+                data_processed = pd.DataFrame(
+                    scaler.fit_transform(data),
+                    index=data.index,
+                    columns=data.columns
+                )
+                
+            else:
+                # Default processing
+                data_processed = data.copy()
+            
+            processed_data[omics_type] = data_processed
+        
+        return processed_data
+    
+    def analyze_pathway_enrichment(self, factors: np.ndarray, omics_data: Dict[str, pd.DataFrame]) -> Dict[str, np.ndarray]:
+        """Analyze pathway enrichment in latent factors"""
+        
+        pathway_scores = {}
+        
+        # Define pathway gene sets (simplified for demo)
+        pathways = {
+            'aging': ['TP53', 'CDKN1A', 'CDKN2A', 'ATM', 'BRCA1'],
+            'metabolism': ['PPARG', 'SREBF1', 'TFAM', 'PGC1A', 'SIRT1'],
+            'inflammation': ['TNF', 'IL6', 'NFKB1', 'TLR4', 'STAT3'],
+            'stemness': ['POU5F1', 'SOX2', 'NANOG', 'KLF4', 'MYC']
+        }
+        
+        # Check RNA data for pathway analysis
+        if 'rna' in omics_data:
+            rna_data = omics_data['rna']
+            
+            for pathway_name, genes in pathways.items():
+                # Find available genes
+                available_genes = [gene for gene in genes if gene in rna_data.columns]
+                
+                if available_genes:
+                    # Calculate pathway activity score
+                    pathway_expr = rna_data[available_genes].mean(axis=1).values
+                    
+                    # Correlate with factors
+                    pathway_factor_scores = []
+                    for i in range(factors.shape[1]):
+                        if len(pathway_expr) == len(factors):
+                            corr, _ = pearsonr(factors[:, i], pathway_expr)
+                            pathway_factor_scores.append(corr if not np.isnan(corr) else 0.0)
+                        else:
+                            pathway_factor_scores.append(0.0)
+                    
+                    pathway_scores[pathway_name] = np.array(pathway_factor_scores)
+                else:
+                    # No genes available for this pathway
+                    pathway_scores[pathway_name] = np.zeros(factors.shape[0])
+        
+        return pathway_scores
+    
+    def validate_integration_biology(self, embeddings: pd.DataFrame) -> Dict[str, Any]:
+        """Validate integration using biological knowledge"""
+        
+        validation_results = {
+            'overall_score': 0.0,
+            'factor_interpretability': 0.0,
+            'biological_coherence': 0.0,
+            'pathway_consistency': 0.0
+        }
+        
+        # Extract factor columns
+        factor_cols = [col for col in embeddings.columns if col.startswith('Factor_')]
+        
+        if factor_cols:
+            factors = embeddings[factor_cols].values
+            
+            # Factor interpretability (how well factors separate)
+            if factors.shape[1] > 1:
+                factor_correlations = np.corrcoef(factors.T)
+                # Good factors should have low correlation with each other
+                off_diagonal = factor_correlations[np.triu_indices_from(factor_correlations, k=1)]
+                avg_correlation = np.abs(off_diagonal).mean()
+                validation_results['factor_interpretability'] = max(0.0, 1.0 - avg_correlation)
+            
+            # Biological coherence (check for known pathway patterns)
+            pathway_cols = [col for col in embeddings.columns if col.startswith('pathway_')]
+            if pathway_cols:
+                pathway_data = embeddings[pathway_cols].values
+                if pathway_data.shape[1] > 0:
+                    # Check if pathways show expected correlations
+                    pathway_coherence = np.abs(np.corrcoef(pathway_data.T)).mean()
+                    validation_results['biological_coherence'] = min(pathway_coherence, 1.0)
+            
+            # Overall score
+            validation_results['overall_score'] = np.mean([
+                validation_results['factor_interpretability'],
+                validation_results['biological_coherence']
+            ])
+        
+        return validation_results
+    
+    def discover_cross_omics_biomarkers(
+        self, 
+        omics_data: Dict[str, pd.DataFrame], 
+        embeddings: pd.DataFrame,
+        method: str = "integrated_shap",
+        top_n: int = 100,
+        pathway_filter: bool = True
+    ) -> Dict[str, Any]:
+        """Discover cross-omics biomarkers from integration"""
+        
+        discovery_results = {
+            'top_biomarkers': [],
+            'omics_contributions': {},
+            'pathway_enrichment': {},
+            'cross_omics_correlations': {}
+        }
+        
+        # Extract factor columns for analysis
+        factor_cols = [col for col in embeddings.columns if col.startswith('Factor_')]
+        
+        if factor_cols and len(factor_cols) > 0:
+            factors = embeddings[factor_cols].values
+            
+            # For each omics type, find features most correlated with factors
+            all_biomarkers = []
+            
+            for omics_type, data in omics_data.items():
+                omics_biomarkers = []
+                
+                # Calculate correlation of each feature with each factor
+                for feature in data.columns:
+                    feature_values = data[feature].values
+                    
+                    if len(feature_values) == factors.shape[0]:
+                        max_corr = 0.0
+                        best_factor = 0
+                        
+                        for i in range(factors.shape[1]):
+                            corr, _ = pearsonr(factors[:, i], feature_values)
+                            if not np.isnan(corr) and abs(corr) > abs(max_corr):
+                                max_corr = corr
+                                best_factor = i
+                        
+                        omics_biomarkers.append({
+                            'feature': feature,
+                            'omics_type': omics_type,
+                            'correlation': max_corr,
+                            'factor': best_factor,
+                            'importance_score': abs(max_corr)
+                        })
+                
+                # Sort by importance and take top features
+                omics_biomarkers.sort(key=lambda x: x['importance_score'], reverse=True)
+                top_omics_features = omics_biomarkers[:min(top_n//len(omics_data), len(omics_biomarkers))]
+                
+                all_biomarkers.extend(top_omics_features)
+                discovery_results['omics_contributions'][omics_type] = len(top_omics_features)
+            
+            # Sort all biomarkers by importance
+            all_biomarkers.sort(key=lambda x: x['importance_score'], reverse=True)
+            discovery_results['top_biomarkers'] = all_biomarkers[:top_n]
+            
+            # Pathway filtering if requested
+            if pathway_filter:
+                aging_genes = [
+                    'TP53', 'CDKN1A', 'CDKN2A', 'ATM', 'BRCA1', 'SIRT1', 'FOXO1', 'FOXO3',
+                    'NF1', 'RB1', 'PTEN', 'AKT1', 'MTOR', 'AMPK', 'PGC1A', 'PPARG'
+                ]
+                
+                filtered_biomarkers = []
+                for biomarker in discovery_results['top_biomarkers']:
+                    # Keep if it's a known aging-related gene or has high correlation
+                    if (biomarker['feature'] in aging_genes or 
+                        biomarker['importance_score'] > 0.3):
+                        filtered_biomarkers.append(biomarker)
+                
+                discovery_results['top_biomarkers'] = filtered_biomarkers[:top_n]
+        
+        return discovery_results

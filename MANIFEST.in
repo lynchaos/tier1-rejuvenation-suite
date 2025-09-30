@@ -1,0 +1,23 @@
+include README.md
+include LICENSE
+include requirements.txt
+include pyproject.toml
+include setup.py
+include USER_GUIDE.md
+
+recursive-include tier1_suite *.py
+recursive-include RegenOmicsMaster *.py
+recursive-include SingleCellRejuvenationAtlas *.py
+recursive-include MultiOmicsFusionIntelligence *.py
+
+recursive-include * *.yaml
+recursive-include * *.yml
+recursive-include * *.json
+recursive-include * *.csv
+recursive-include * *.tsv
+
+global-exclude __pycache__
+global-exclude *.py[co]
+global-exclude .DS_Store
+global-exclude *.so
+global-exclude .git*
