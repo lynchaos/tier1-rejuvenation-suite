@@ -1,0 +1,154 @@
+# TIER 1 Rejuvenation Suite - Conda Environment
+# ==============================================
+# 
+# This file defines the complete conda environment for reproducible installations.
+# Includes system-level dependencies that require conda for proper compilation.
+#
+# Usage:
+#   conda env create -f environment.yml
+#   conda activate tier1-rejuvenation-suite
+
+name: tier1-rejuvenation-suite
+channels:
+  - conda-forge
+  - bioconda
+  - pytorch
+  - defaults
+
+dependencies:
+  # Python runtime
+  - python=3.11
+  
+  # System-level dependencies that need conda
+  - hdf5>=1.12.0
+  - libhdf5>=1.12.0
+  - h5py>=3.7.0
+  - pytables>=3.8.0
+  
+  # OpenMP and parallel computing
+  - openmp
+  - llvm-openmp  # For macOS
+  - intel-openmp  # Alternative OpenMP implementation
+  
+  # BLAS/LAPACK optimized libraries
+  - openblas
+  - blas=*=openblas
+  - lapack
+  
+  # Scientific computing with optimized builds
+  - numpy>=1.21.0
+  - scipy>=1.9.0
+  - pandas>=1.5.0
+  - matplotlib>=3.5.0
+  - seaborn>=0.11.0
+  - plotly>=5.10.0
+  
+  # Machine learning - conda optimized versions
+  - scikit-learn>=1.1.0
+  - xgboost>=1.6.0
+  - lightgbm>=3.3.0
+  - imbalanced-learn>=0.9.0
+  
+  # PyTorch ecosystem
+  - pytorch>=1.12.0
+  - torchvision>=0.13.0
+  - pytorch-cuda=11.8  # For CUDA support, comment out if CPU-only
+  
+  # Bioinformatics tools
+  - scanpy>=1.9.0
+  - anndata>=0.8.0
+  - leidenalg>=0.8.10
+  - python-igraph>=0.10.0
+  - pynndescent>=0.5.0
+  - umap-learn>=0.5.3
+  - numba>=0.57.0
+  
+  # Network and graph analysis
+  - networkx>=2.8.0
+  - igraph
+  - graph-tool  # High-performance graph analysis
+  
+  # Statistics and data analysis
+  - statsmodels>=0.13.0
+  - pingouin>=0.5.0
+  
+  # Bioinformatics specific
+  - biopython>=1.79
+  
+  # File I/O and data formats
+  - openpyxl>=3.0.10
+  - pyyaml>=6.0
+  - jsonschema>=4.9.0
+  
+  # Parallel and distributed computing
+  - joblib>=1.1.0
+  - dask>=2022.7.0
+  - dask-ml
+  - distributed
+  
+  # Development and CLI tools
+  - pip>=22.0.0
+  - pip-tools>=6.8.0
+  - conda-lock>=1.4.0
+  
+  # Jupyter ecosystem
+  - jupyter>=1.0.0
+  - ipykernel>=6.0.0
+  - ipywidgets>=8.0.0
+  - jupyterlab>=3.4.0
+  
+  # Development tools
+  - pytest>=7.0.0
+  - pytest-cov>=4.0.0
+  - black>=22.0.0
+  - flake8>=5.0.0
+  - mypy>=0.991
+  
+  # System utilities
+  - curl
+  - wget
+  - git
+  - make
+  - cmake
+  - gcc_linux-64  # Linux
+  - gxx_linux-64  # Linux
+  
+  # Additional scientific libraries
+  - bottleneck  # Fast NumPy operations
+  - numexpr     # Fast numerical expressions
+  - cython>=0.29.0
+  
+  # Memory profiling and optimization
+  - memory_profiler
+  - psutil
+  
+  # Pip dependencies (things not available in conda)
+  - pip:
+    - typer>=0.7.0
+    - rich>=12.0.0
+    - shap>=0.41.0
+    - scrublet>=0.2.3  # Doublet detection for single-cell
+    - harmonypy>=0.0.9  # Batch correction
+    - scanorama>=1.7.3  # Integration method
+    - bbknn>=1.5.1      # Batch balanced k-NN
+    - scvi-tools>=0.20.0  # Deep generative models for single-cell
+    - cell2location>=0.1.3  # Spatial transcriptomics
+    - squidpy>=1.2.0    # Spatial omics analysis
+    - tangram-sc>=1.0.4 # Spatial mapping
+    - palantir>=1.3.0   # Trajectory analysis
+    - cellrank>=1.5.0   # RNA velocity and dynamics
+    - scvelo>=0.2.5     # RNA velocity analysis
+    - pyscenic>=0.12.1  # Gene regulatory networks
+    - decoupler>=1.4.0  # Pathway and TF activity inference
+    - omnipath>=1.0.8   # Pathway databases
+    - pypath-omnipath>=0.14.0  # Pathway analysis
+    - gseapy>=1.0.4     # Gene set enrichment analysis
+    - adjusttext>=0.7.3 # Plot text adjustment
+    - session-info      # Session information
+    - scanpy[leiden]    # Ensure leiden clustering
+    - loompy>=3.0.7     # Loom file format
+    - zarr>=2.12.0      # Chunked arrays
+    - fsspec>=2022.8.0  # File system interface
+    - aiohttp>=3.8.0    # Async HTTP client
+    - tqdm>=4.64.0      # Progress bars
+    - natsort>=8.2.0    # Natural sorting

@@ -1,53 +1,371 @@
-# 🧬 TIER 1 Cellular Rejuvenation Suite
+# TIER 1 Rejuvenation Suite
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+A comprehensive bioinformatics analysis suite for aging research with multi-omics integration, single-cell analysis, and machine learning capabilities.
 
-> Biologically validated cellular rejuvenation analysis suite with comprehensive biomarker validation
-
-## 🔬 Overview
-
-The TIER 1 Cellular Rejuvenation Suite is a comprehensive bioinformatics toolkit designed for cellular aging and rejuvenation research. It provides command-line interfaces and interactive tools for:
-
-- **Bulk omics data analysis** with machine learning models
-- **Single-cell RNA-seq analysis** including QC, clustering, and trajectory inference
-- **Multi-omics integration** and biomarker discovery
-- **Biologically validated scoring** using 110+ peer-reviewed aging biomarkers
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
 ```bash
-# Install from source
-git clone https://github.com/lynchaos/tier1-rejuvenation-suite.git
-cd tier1-rejuvenation-suite
+# Install directly from source
 pip install -e .
 
-# Or install from PyPI (when available)
-pip install tier1-rejuvenation-suite
+# Or using the environment manager
+./env_manager.sh create-dev
+conda activate tier1-rejuvenation-suite
+./env_manager.sh install
 ```
 
-### Basic Usage
+### CLI Usage
+
+The suite provides three main command groups:
 
 ```bash
-# Show available commands
+# Bulk analysis commands
+tier1 bulk fit --data data.csv --output results/
+tier1 bulk predict --model model.pkl --data test.csv
+
+# Single-cell analysis commands  
+tier1 sc run-qc --data sc_data.h5ad --output qc_results/
+tier1 sc run-embed --data processed.h5ad --method umap
+tier1 sc cluster --data embedded.h5ad --algorithm leiden
+tier1 sc paga --data clustered.h5ad --root-cell root_0
+
+# Multi-omics integration
+tier1 multi fit --data-dir multi_omics/ --output integration/
+tier1 multi embed --data integrated.pkl --method mofa
+tier1 multi eval --true-labels labels.csv --predictions pred.csv
+```
+
+## Environment Management
+
+### Using the Environment Manager
+
+The `env_manager.sh` script provides comprehensive environment management:
+
+```bash
+# Development setup (full environment with all tools)
+./env_manager.sh create-dev
+conda activate tier1-rejuvenation-suite
+
+# Production setup (minimal dependencies)
+./env_manager.sh create-prod
+conda activate tier1-rejuvenation-prod
+
+# Install the package
+./env_manager.sh install
+
+# Test installation
+./env_manager.sh test
+
+# Update dependency locks
+./env_manager.sh update-lock
+
+# Build Docker images
+./env_manager.sh build-docker
+```
+
+### Manual Environment Setup
+
+#### Development Environment
+
+```bash
+# Create from environment file
+conda env create -f environment.yml
+conda activate tier1-rejuvenation-suite
+
+# Install package in development mode
+pip install -e .
+```
+
+#### Production Environment
+
+```bash
+# Minimal environment for production
+conda env create -f environment-prod.yml
+conda activate tier1-rejuvenation-prod
+
+# Install package
+pip install .
+```
+
+## Docker Deployment
+
+### Using Docker Compose
+
+```bash
+# Start development environment
+docker-compose up tier1-dev
+
+# Start production environment  
+docker-compose up tier1-prod
+
+# Interactive development session
+docker-compose run --rm tier1-dev bash
+```
+
+### Manual Docker Build
+
+```bash
+# Build production image
+docker build --target production -t tier1-suite:latest .
+
+# Build development image
+docker build --target development -t tier1-suite:dev .
+
+# Run analysis
+docker run -v $(pwd)/data:/app/data tier1-suite:latest \
+  tier1 bulk fit --data /app/data/input.csv --output /app/data/results/
+```
+
+## Dependencies
+
+### System Requirements
+
+- **Operating System**: Linux (Ubuntu 20.04+), macOS, Windows with WSL
+- **Python**: 3.11+
+- **Memory**: 8GB+ recommended for large datasets
+- **Storage**: 5GB+ for full development environment
+
+### Key Dependencies
+
+- **Core**: pandas, numpy, scikit-learn, scipy
+- **Single-cell**: scanpy, anndata, scvelo, paga
+- **Machine Learning**: torch, transformers, xgboost, lightgbm
+- **Visualization**: matplotlib, seaborn, plotly
+- **Bioinformatics**: pysam, pyvcf, biopython
+- **Multi-omics**: muon, omicverse
+
+### Environment Files
+
+| File | Purpose | Size | Use Case |
+|------|---------|------|----------|
+| `environment.yml` | Full development environment | ~100 packages | Development, research |
+| `environment-prod.yml` | Minimal production environment | ~30 packages | Production deployment |
+| `requirements.in` | pip-tools specification | Core deps | pip-based installs |
+| `requirements.txt` | Pinned pip requirements | Locked versions | Reproducible installs |
+
+## CLI Reference
+
+### Bulk Analysis (`tier1 bulk`)
+
+```bash
+# Fit models on bulk data
+tier1 bulk fit \
+  --data data/bulk_expression.csv \
+  --output results/bulk_models/ \
+  --model-type xgboost \
+  --cv-folds 5
+
+# Predict using trained models
+tier1 bulk predict \
+  --model results/bulk_models/best_model.pkl \
+  --data data/test_samples.csv \
+  --output results/predictions.csv
+```
+
+### Single-Cell Analysis (`tier1 sc`)
+
+```bash
+# Quality control pipeline
+tier1 sc run-qc \
+  --data data/raw_counts.h5ad \
+  --output results/qc/ \
+  --min-genes 200 \
+  --max-genes 5000 \
+  --mt-percent 20
+
+# Embedding and dimensionality reduction
+tier1 sc run-embed \
+  --data data/filtered.h5ad \
+  --method umap \
+  --n-components 2 \
+  --output results/embedded.h5ad
+
+# Clustering analysis
+tier1 sc cluster \
+  --data results/embedded.h5ad \
+  --algorithm leiden \
+  --resolution 0.5 \
+  --output results/clustered.h5ad
+
+# Trajectory analysis with PAGA
+tier1 sc paga \
+  --data results/clustered.h5ad \
+  --root-cell cell_type_stem \
+  --output results/trajectories/
+```
+
+### Multi-Omics Integration (`tier1 multi`)
+
+```bash
+# Integrate multiple omics datasets
+tier1 multi fit \
+  --data-dir data/multi_omics/ \
+  --output results/integration/ \
+  --method mofa \
+  --factors 10
+
+# Embed integrated data
+tier1 multi embed \
+  --data results/integration/integrated_data.pkl \
+  --method umap \
+  --output results/multi_embedding.pkl
+
+# Evaluate integration quality
+tier1 multi eval \
+  --true-labels data/cell_types.csv \
+  --predictions results/predicted_types.csv \
+  --metrics ari silhouette \
+  --output results/evaluation_report.json
+```
+
+## Development
+
+### Project Structure
+
+```
+tier1_suite/
+├── cli.py                 # Main CLI entry point
+├── bulk/                  # Bulk analysis modules
+│   ├── analyzer.py
+│   └── bulk_cli.py
+├── single_cell/           # Single-cell analysis
+│   ├── analyzer.py
+│   └── single_cell_cli.py
+├── multi_omics/           # Multi-omics integration
+│   ├── analyzer.py
+│   └── multi_omics_cli.py
+└── utils/                 # Shared utilities
+    └── __init__.py
+
+environment/               # Environment management
+├── environment.yml        # Development environment
+├── environment-prod.yml   # Production environment
+├── requirements.in        # pip-tools input
+├── requirements.txt       # Locked requirements
+├── Dockerfile            # Multi-stage Docker build
+├── docker-compose.yml    # Docker services
+└── env_manager.sh        # Environment manager script
+```
+
+### Contributing
+
+1. **Setup development environment**:
+   ```bash
+   ./env_manager.sh create-dev
+   conda activate tier1-rejuvenation-suite
+   ./env_manager.sh install
+   ```
+
+2. **Run tests**:
+   ```bash
+   ./env_manager.sh test
+   pytest tests/ -v
+   ```
+
+3. **Update dependencies**:
+   ```bash
+   ./env_manager.sh update-lock
+   ```
+
+4. **Build and test Docker images**:
+   ```bash
+   ./env_manager.sh build-docker
+   ```
+
+### Testing
+
+```bash
+# Run all tests
+./env_manager.sh test
+
+# Run specific test categories
+pytest tests/test_bulk.py -v
+pytest tests/test_single_cell.py -v  
+pytest tests/test_multi_omics.py -v
+
+# Test CLI commands
 tier1 --help
-
-# Show suite information
-tier1 info
-
-# Launch interactive interface
-tier1 interactive
+tier1 bulk --help
+tier1 sc --help
+tier1 multi --help
 ```
 
-## 📋 CLI Commands
+## Troubleshooting
 
-### Bulk Data Analysis
+### Common Issues
 
-Train machine learning models on bulk omics data:
-
+#### Environment Creation Fails
 ```bash
+# Clean conda cache
+conda clean --all
+
+# Recreate environment
+./env_manager.sh cleanup
+./env_manager.sh create-dev
+```
+
+#### Package Installation Issues
+```bash
+# Update conda and pip
+conda update conda
+pip install --upgrade pip
+
+# Reinstall package
+pip uninstall tier1-suite
+./env_manager.sh install
+```
+
+#### Memory Issues with Large Datasets
+```bash
+# Use production environment (lighter)
+./env_manager.sh create-prod
+
+# Or increase memory limits
+export OMP_NUM_THREADS=4
+ulimit -m 8388608  # 8GB limit
+```
+
+#### Docker Build Issues
+```bash
+# Clean Docker cache
+docker system prune -f
+
+# Rebuild with no cache
+docker build --no-cache --target production -t tier1-suite:latest .
+```
+
+### Performance Optimization
+
+- Use production environment for large-scale analysis
+- Set `OMP_NUM_THREADS` for parallel processing
+- Use SSD storage for temporary files
+- Consider using Docker for isolated environments
+- Monitor memory usage with large single-cell datasets
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Citation
+
+If you use TIER 1 Rejuvenation Suite in your research, please cite:
+
+```bibtex
+@software{tier1_suite,
+  title={TIER 1 Rejuvenation Suite: Comprehensive Bioinformatics for Aging Research},
+  author={Your Name},
+  year={2024},
+  url={https://github.com/yourorg/tier1-suite}
+}
+```
+
+## Support
+
+- **Documentation**: See this README and inline help (`tier1 --help`)
+- **Issues**: Report bugs and feature requests on GitHub
+- **Discussions**: Join our community discussions for usage questions
 # Fit models with biomarker validation
 tier1 bulk fit data.csv models/ --biomarker-val
 

@@ -1,0 +1,64 @@
+# TIER 1 Rejuvenation Suite - Production Environment
+# =================================================
+# 
+# Minimal production environment with only essential dependencies.
+# Use this for deployment and production systems.
+#
+# Usage:
+#   conda env create -f environment-prod.yml
+#   conda activate tier1-rejuvenation-suite-prod
+
+name: tier1-rejuvenation-suite-prod
+channels:
+  - conda-forge
+  - bioconda
+  - pytorch
+  - defaults
+
+dependencies:
+  # Python runtime
+  - python=3.11
+  
+  # Essential system dependencies
+  - hdf5>=1.12.0
+  - h5py>=3.7.0
+  - openmp
+  - openblas
+  - blas=*=openblas
+  
+  # Core scientific computing
+  - numpy>=1.21.0
+  - scipy>=1.9.0
+  - pandas>=1.5.0
+  - matplotlib>=3.5.0
+  - seaborn>=0.11.0
+  
+  # Machine learning essentials
+  - scikit-learn>=1.1.0
+  - xgboost>=1.6.0
+  - lightgbm>=3.3.0
+  
+  # PyTorch (CPU-only for production)
+  - pytorch-cpu>=1.12.0
+  - cpuonly  # Ensures CPU-only PyTorch
+  
+  # Bioinformatics core
+  - scanpy>=1.9.0
+  - anndata>=0.8.0
+  - leidenalg>=0.8.10
+  - python-igraph>=0.10.0
+  - umap-learn>=0.5.3
+  - numba>=0.57.0
+  
+  # Essential tools
+  - networkx>=2.8.0
+  - statsmodels>=0.13.0
+  - biopython>=1.79
+  - joblib>=1.1.0
+  - pyyaml>=6.0
+  
+  # CLI dependencies via pip
+  - pip:
+    - typer>=0.7.0
+    - rich>=12.0.0
+    - shap>=0.41.0

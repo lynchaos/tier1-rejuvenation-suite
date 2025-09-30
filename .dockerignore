@@ -1,0 +1,105 @@
+# TIER 1 Rejuvenation Suite - Docker ignore file
+# ==============================================
+
+# Git and version control
+.git
+.gitignore
+.gitattributes
+
+# Python cache and compiled files
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache
+.coverage
+htmlcov/
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+*.log
+
+# Virtual environments
+tier1_env/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Documentation
+docs/
+*.md
+README*
+CHANGELOG*
+CONTRIBUTING*
+
+# Test files and temporary data
+tests/
+test_*/
+*.test
+tmp/
+temp/
+
+# Large data files (should be mounted as volumes)
+data/
+results/
+models/
+*.h5
+*.h5ad
+*.csv
+*.tsv
+*.xlsx
+*.parquet
+
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+
+# Jupyter notebooks (for production builds)
+*.ipynb
+.ipynb_checkpoints/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Docker files (avoid recursion)
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+
+# Backup files
+*.bak
+*.backup

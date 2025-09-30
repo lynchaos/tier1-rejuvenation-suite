@@ -1,0 +1,140 @@
+# TIER 1 Rejuvenation Suite - Docker Compose
+# ==========================================
+#
+# This docker-compose.yml provides different service configurations
+# for development, testing, and production use.
+#
+# Usage:
+#   docker-compose up development    # Start development environment
+#   docker-compose up production     # Start production environment
+#   docker-compose up jupyter        # Start Jupyter lab server
+
+version: '3.8'
+
+services:
+  # Production service
+  production:
+    build:
+      context: .
+      target: production
+    image: tier1-rejuvenation-suite:latest
+    container_name: tier1-production
+    volumes:
+      - ./data:/app/data:ro
+      - ./results:/app/results
+      - ./models:/app/models
+    environment:
+      - TIER1_LOG_LEVEL=INFO
+      - TIER1_DATA_DIR=/app/data
+      - TIER1_RESULTS_DIR=/app/results
+      - TIER1_MODEL_DIR=/app/models
+    restart: unless-stopped
+    command: ["tier1", "info"]
+
+  # Development service  
+  development:
+    build:
+      context: .
+      target: development
+    image: tier1-rejuvenation-suite:dev
+    container_name: tier1-development
+    ports:
+      - "8888:8888"
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./models:/app/models
+      - jupyter-data:/home/tier1user/.jupyter
+    environment:
+      - TIER1_LOG_LEVEL=DEBUG
+      - TIER1_DATA_DIR=/app/data
+      - TIER1_RESULTS_DIR=/app/results
+      - TIER1_MODEL_DIR=/app/models
+      - JUPYTER_ENABLE_LAB=yes
+    command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--ServerApp.token=''", "--ServerApp.password=''"]
+
+  # Jupyter-only service
+  jupyter:
+    build:
+      context: .
+      target: development
+    image: tier1-rejuvenation-suite:dev
+    container_name: tier1-jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app
+      - ./notebooks:/app/notebooks
+      - ./data:/app/data
+      - jupyter-data:/home/tier1user/.jupyter
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
+
+  # CLI testing service
+  cli-test:
+    build:
+      context: .
+      target: production
+    image: tier1-rejuvenation-suite:latest
+    container_name: tier1-cli-test
+    volumes:
+      - ./test_data:/app/test_data:ro
+      - ./test_results:/app/test_results
+    environment:
+      - TIER1_LOG_LEVEL=DEBUG
+    command: ["python", "test_installation.py"]
+
+  # Bulk analysis service
+  bulk-analysis:
+    build:
+      context: .
+      target: production
+    image: tier1-rejuvenation-suite:latest
+    container_name: tier1-bulk
+    volumes:
+      - ./data:/app/data:ro
+      - ./results/bulk:/app/results
+      - ./models/bulk:/app/models
+    environment:
+      - TIER1_LOG_LEVEL=INFO
+    command: ["tier1", "bulk", "--help"]
+
+  # Single-cell analysis service
+  single-cell:
+    build:
+      context: .
+      target: production
+    image: tier1-rejuvenation-suite:latest
+    container_name: tier1-sc
+    volumes:
+      - ./data:/app/data:ro
+      - ./results/single-cell:/app/results
+    environment:
+      - TIER1_LOG_LEVEL=INFO
+    command: ["tier1", "sc", "--help"]
+
+  # Multi-omics analysis service
+  multi-omics:
+    build:
+      context: .
+      target: production
+    image: tier1-rejuvenation-suite:latest
+    container_name: tier1-multi
+    volumes:
+      - ./data:/app/data:ro
+      - ./results/multi-omics:/app/results
+      - ./models/multi-omics:/app/models
+    environment:
+      - TIER1_LOG_LEVEL=INFO
+    command: ["tier1", "multi", "--help"]
+
+volumes:
+  jupyter-data:
+    driver: local
+
+networks:
+  default:
+    name: tier1-network
