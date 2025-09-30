@@ -7,7 +7,13 @@ Main analyzer class for single-cell RNA-seq data processing,
 quality control, dimensionality reduction, clustering, and trajectory analysis.
 """
 
-import scanpy as sc
+try:
+    import scanpy as sc
+    SCANPY_AVAILABLE = True
+except ImportError:
+    SCANPY_AVAILABLE = False
+    sc = None
+
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -17,9 +23,10 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-# Configure scanpy
-sc.settings.verbosity = 1
-sc.settings.set_figure_params(dpi=80, facecolor="white")
+# Configure scanpy if available
+if SCANPY_AVAILABLE:
+    sc.settings.verbosity = 1
+    sc.settings.set_figure_params(dpi=80, facecolor="white")
 
 # Import existing components
 import sys

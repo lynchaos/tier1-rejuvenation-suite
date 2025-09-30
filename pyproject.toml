@@ -42,16 +42,8 @@ dependencies = [
     "shap>=0.41.0",
     "imbalanced-learn>=0.9.0",
     
-    # Deep Learning (PyTorch)
-    "torch>=1.12.0",
-    "torchvision>=0.13.0",
-    
-    # Bioinformatics & Genomics
-    "scanpy>=1.9.0",
+    # Bioinformatics & Genomics (Core)
     "anndata>=0.8.0",
-    "umap-learn>=0.5.3",
-    "leidenalg>=0.8.10",
-    "python-igraph>=0.10.0",
     "networkx>=2.8.0",
     "biopython>=1.79",
     
@@ -65,7 +57,7 @@ dependencies = [
     "pyyaml>=6.0",
     "jsonschema>=4.9.0",
     "pydantic>=1.10.0",
-    "pydantic-settings>=2.0.0",
+    "pydantic-settings>=2.0.0; python_version >= '3.8'",
     
     # Parallel Processing
     "joblib>=1.1.0",
@@ -82,6 +74,19 @@ web = [
     "streamlit>=1.12.0",
     "dash>=2.6.0",
     "bokeh>=2.4.0",
+]
+deep-learning = [
+    "torch>=1.12.0",
+    "torchvision>=0.13.0",
+]
+single-cell = [
+    "scanpy>=1.9.0",
+    "umap-learn>=0.5.3",
+    "leidenalg>=0.8.10",
+    "python-igraph>=0.10.0",
+]
+all = [
+    "tier1-rejuvenation-suite[deep-learning,single-cell,web]",
 ]
 dev = [
     # Testing Framework
