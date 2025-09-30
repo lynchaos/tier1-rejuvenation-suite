@@ -48,18 +48,19 @@ def _emit_report(name: str, payload: dict, metadata: dict = None):
         print(f"⚠️  Report generation failed: {e}")
         return None
 
-def _test_normality(scores: np.ndarray) -> float:
-    """Test normality of score distribution"""
+def _test_normality(scores: np.ndarray) -> dict:
+    """Return dict of normality diagnostics; degrade gracefully if SciPy absent."""
+    out = {"method": None, "pvalue": np.nan, "skew": float(pd.Series(scores).skew()), "kurtosis": float(pd.Series(scores).kurt())}
     try:
-        from scipy.stats import normaltest
-        _, p_value = normaltest(scores)
-        return p_value
-    except ImportError:
-        # Fallback: simple skewness test
-        from scipy.stats import skew
-        return 1.0 - abs(skew(scores)) / 2.0  # Rough approximation
-    except:
-        return 0.0  # Unknown
+        from scipy.stats import normaltest, shapiro
+        out["method"] = "dagostino_pearson"
+        stat, p = normaltest(scores) if len(scores) >= 8 else shapiro(scores)
+        out["pvalue"] = float(p)
+        return out
+    except Exception:
+        # SciPy not available or failed; return descriptive stats only
+        out["method"] = "skew_kurtosis_only"
+        return out
 
 def _extract_single_cell_metrics(adata, results):
     """Extract real metrics from single-cell analysis instead of placeholders"""
@@ -549,7 +550,9 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         
         # Add scientific calibration metrics
         print(f"\n🔬 SCIENTIFIC VALIDATION METRICS:")
-        print(f"   📊 Score distribution: normal test p-value = {_test_normality(scores):.3f}")
+        norm = _test_normality(scores)
+        print(f"   📊 Normality: method={norm['method']}, p={norm['pvalue']:.3g}, "
+              f"skew={norm['skew']:.3f}, kurtosis={norm['kurtosis']:.3f}")
         if metadata_df is not None and 'age' in metadata_df.columns:
             age_correlation = np.corrcoef(scores, metadata_df['age'].values)[0, 1]
             print(f"   🧬 Age correlation: {age_correlation:.3f}")
@@ -595,20 +598,23 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         
         # Show top rejuvenated samples
         print(f"\n🏆 Top 5 rejuvenated samples:")
-        top_samples = result_df.nlargest(5, score_col)
-        display_cols = [score_col]
-        if 'rejuvenation_category' in result_df.columns:
-            display_cols.append('rejuvenation_category')
-        if is_corrected and 'age_adjusted_score' in result_df.columns:
-            display_cols.append('age_adjusted_score')
-            
-        for idx, row in top_samples[display_cols].iterrows():
-            score_str = f"{row[score_col]:.3f}"
-            if len(display_cols) > 1:
-                extra_info = " | ".join([f"{col}: {row[col]}" for col in display_cols[1:]])
-                print(f"   {idx}: {score_str} | {extra_info}")
-            else:
-                print(f"   {idx}: {score_str}")
+        if score_col in result_df.columns and np.issubdtype(result_df[score_col].dtype, np.number):
+            top_samples = result_df.dropna(subset=[score_col]).nlargest(5, score_col)
+            display_cols = [score_col]
+            if 'rejuvenation_category' in result_df.columns:
+                display_cols.append('rejuvenation_category')
+            if is_corrected and 'age_adjusted_score' in result_df.columns:
+                display_cols.append('age_adjusted_score')
+                
+            for idx, row in top_samples[display_cols].iterrows():
+                score_str = f"{row[score_col]:.3f}"
+                if len(display_cols) > 1:
+                    extra_info = " | ".join([f"{col}: {row[col]}" for col in display_cols[1:]])
+                    print(f"   {idx}: {score_str} | {extra_info}")
+                else:
+                    print(f"   {idx}: {score_str}")
+        else:
+            print("⚠️  Cannot compute top samples (score column missing or non-numeric).")
         
         # Generate enhanced scientific report
         report_name = "RegenOmics (Corrected)" if is_corrected else "RegenOmics"
@@ -773,7 +779,7 @@ def run_single_cell_atlas(data_path: str, data_type: str) -> bool:
         
         if report_path:
             print(f"📄 Scientific report saved: {report_path}")
-            print(f"� Processed data saved: {final_data_path}")
+            print(f"✅ Processed data saved: {final_data_path}")
             print(f"🔬 Report includes: trajectory analysis, clustering validation, biological interpretation")
         
         return True
@@ -860,6 +866,10 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
         
         print(f"✅ Common samples across modalities: {len(common_samples)}")
         
+        if len(common_samples) == 0:
+            print("❌ No overlapping samples across modalities. Please align sample IDs.")
+            return False
+        
         # Align all data to common samples
         rnaseq_aligned = rnaseq.loc[common_samples]
         proteomics_aligned = proteomics.loc[common_samples] 
@@ -913,6 +923,14 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
         
         # Generate comprehensive scientific report
         print(f"\n📋 Generating comprehensive scientific report...")
+        
+        # Handle PyTorch tensor conversion if needed
+        try:
+            import torch
+            if isinstance(features, torch.Tensor):
+                features = features.detach().cpu().numpy()
+        except Exception:
+            pass
         
         # Create features DataFrame with sample alignment
         features_df = pd.DataFrame(
@@ -1214,5 +1232,38 @@ def show_application_info():
     print()
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="TIER 1 Core Impact Applications Suite")
+    parser.add_argument("--mode", choices=["demo","real"], help="Run without menu")
+    parser.add_argument("--app", choices=["bulk","sc","multi"], help="Application to run")
+    parser.add_argument("--path", help="Input path (csv/h5ad/metadata.csv)")
+    args = parser.parse_args()
+
     _print_banner()
-    main()
+    if args.mode:
+        if args.mode == "demo":
+            demo = generate_demo_data()
+            if demo:
+                if args.app == "bulk": 
+                    run_application("RegenOmics Master Pipeline", f"{demo}/bulk_rnaseq.csv", "demo")
+                elif args.app == "sc": 
+                    run_application("Single-Cell Rejuvenation Atlas", f"{demo}/single_cell.h5ad", "demo")
+                elif args.app == "multi": 
+                    run_application("Multi-Omics Fusion Intelligence", f"{demo}/metadata.csv", "demo")
+                else:
+                    print("❌ --app required for --mode demo")
+            else:
+                print("❌ Demo data generation failed")
+        else:
+            if not args.path: 
+                raise SystemExit("❌ --path required for --mode real")
+            if not args.app:
+                raise SystemExit("❌ --app required for --mode real")
+            app_map = {
+                "bulk": "RegenOmics Master Pipeline",
+                "sc": "Single-Cell Rejuvenation Atlas",
+                "multi": "Multi-Omics Fusion Intelligence"
+            }
+            run_application(app_map[args.app], args.path, "real")
+    else:
+        main()
