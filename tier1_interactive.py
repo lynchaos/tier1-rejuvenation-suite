@@ -19,7 +19,7 @@ import os
 import sys
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union, Any
 
 import numpy as np
 import pandas as pd
@@ -34,7 +34,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 
-def _emit_report(name: str, payload: dict, metadata: dict = None):
+def _emit_report(name: str, payload: dict, metadata: Optional[dict] = None) -> Optional[str]:
     """Unified scientific report generation with error handling"""
     try:
         from scientific_reporter import generate_comprehensive_report
@@ -51,13 +51,16 @@ def _emit_report(name: str, payload: dict, metadata: dict = None):
         return None
 
 
-def _test_normality(scores: np.ndarray) -> dict:
+def _test_normality(scores: np.ndarray) -> Dict[str, Any]:
     """Return dict of normality diagnostics; degrade gracefully if SciPy absent."""
-    out = {
+    series = pd.Series(scores)
+    skew_val = series.skew()
+    kurt_val = series.kurt()
+    out: Dict[str, Any] = {
         "method": None,
         "pvalue": np.nan,
-        "skew": float(pd.Series(scores).skew()),
-        "kurtosis": float(pd.Series(scores).kurt()),
+        "skew": float(skew_val) if pd.notna(skew_val) else 0.0,
+        "kurtosis": float(kurt_val) if pd.notna(kurt_val) else 0.0,
     }
     try:
         from scipy.stats import normaltest, shapiro
@@ -72,17 +75,18 @@ def _test_normality(scores: np.ndarray) -> dict:
         return out
 
 
-def _extract_single_cell_metrics(adata, results):
+def _extract_single_cell_metrics(adata: Any, results: Any) -> Dict[str, Any]:
     """Extract real metrics from single-cell analysis instead of placeholders"""
 
-    metrics = {}
+    metrics: Dict[str, Any] = {}
 
     # Clustering metrics
     if "leiden" in adata.obs.columns:
         clusters = adata.obs["leiden"].unique()
+        value_counts = adata.obs["leiden"].value_counts()
         metrics["n_clusters"] = len(clusters)
-        metrics["min_cluster_size"] = int(adata.obs["leiden"].value_counts().min())
-        metrics["max_cluster_size"] = int(adata.obs["leiden"].value_counts().max())
+        metrics["min_cluster_size"] = int(value_counts.min())
+        metrics["max_cluster_size"] = int(value_counts.max())
         metrics["modularity"] = "Computed" if len(clusters) > 1 else "N/A"
     else:
         metrics["n_clusters"] = 1
@@ -92,12 +96,14 @@ def _extract_single_cell_metrics(adata, results):
 
     # Basic QC metrics
     if "total_counts" in adata.obs.columns:
-        metrics["mean_counts_per_cell"] = float(adata.obs["total_counts"].mean())
+        mean_counts = adata.obs["total_counts"].mean()
+        metrics["mean_counts_per_cell"] = float(mean_counts) if pd.notna(mean_counts) else 0.0
     else:
         metrics["mean_counts_per_cell"] = "N/A"
 
     if "n_genes_by_counts" in adata.obs.columns:
-        metrics["mean_genes_per_cell"] = float(adata.obs["n_genes_by_counts"].mean())
+        mean_genes = adata.obs["n_genes_by_counts"].mean()
+        metrics["mean_genes_per_cell"] = float(mean_genes) if pd.notna(mean_genes) else 0.0
     else:
         metrics["mean_genes_per_cell"] = "N/A"
 
@@ -121,9 +127,8 @@ def _extract_single_cell_metrics(adata, results):
             and "pca" in adata.uns
             and "variance_ratio" in adata.uns["pca"]
         ):
-            metrics["pca_variance_explained"] = float(
-                adata.uns["pca"]["variance_ratio"][:10].sum()
-            )
+            variance_ratio = adata.uns["pca"]["variance_ratio"][:10]
+            metrics["pca_variance_explained"] = float(variance_ratio.sum())
         else:
             metrics["pca_variance_explained"] = "Available"
     else:
@@ -138,7 +143,7 @@ def _extract_single_cell_metrics(adata, results):
     return metrics
 
 
-def setup_logging():
+def setup_logging() -> None:
     """Setup clean logging for interactive use"""
     logging.basicConfig(
         level=logging.WARNING,  # Only show warnings and errors
@@ -146,12 +151,12 @@ def setup_logging():
     )
 
 
-def clear_screen():
+def clear_screen() -> None:
     """Clear terminal screen"""
     os.system("clear" if os.name == "posix" else "cls")
 
 
-def print_header():
+def print_header() -> None:
     """Print application header"""
     print("🧬" + "=" * 78 + "🧬")
     print("🚀            TIER 1: Core Impact Applications Suite            🚀")
@@ -200,12 +205,15 @@ def download_dataset(dataset_info: Dict) -> Optional[str]:
             return download_geo_dataset(dataset_info, data_dir)
         elif dataset_info["method"] == "generate":
             return generate_sample_dataset(dataset_info, data_dir)
+        else:
+            print(f"❌ Unknown method: {dataset_info['method']}")
+            return None
     except Exception as e:
         print(f"❌ Download failed: {e}")
         return None
 
 
-def download_scanpy_dataset(dataset_info: Dict, data_dir: Path) -> str:
+def download_scanpy_dataset(dataset_info: Dict, data_dir: Path) -> Optional[str]:
     """Download dataset using scanpy with version compatibility"""
     try:
         import numpy as np
@@ -255,7 +263,7 @@ def download_scanpy_dataset(dataset_info: Dict, data_dir: Path) -> str:
         return None
 
 
-def download_geo_dataset(dataset_info: Dict, data_dir: Path) -> str:
+def download_geo_dataset(dataset_info: Dict, data_dir: Path) -> Optional[str]:
     """Download GEO dataset metadata"""
     import urllib.request
 
@@ -273,7 +281,7 @@ def download_geo_dataset(dataset_info: Dict, data_dir: Path) -> str:
         return None
 
 
-def generate_sample_dataset(dataset_info: Dict, data_dir: Path) -> str:
+def generate_sample_dataset(dataset_info: Dict, data_dir: Path) -> Optional[str]:
     """Generate sample dataset with reproducible seeding"""
     import os
 
@@ -974,7 +982,7 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
 
         # Verify sample alignment across modalities
         common_samples = rnaseq.index.intersection(proteomics.index)
-        if has_metabolomics:
+        if has_metabolomics and metabolomics is not None:
             common_samples = common_samples.intersection(metabolomics.index)
 
         print(f"✅ Common samples across modalities: {len(common_samples)}")
@@ -989,7 +997,7 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
         rnaseq_aligned = rnaseq.loc[common_samples]
         proteomics_aligned = proteomics.loc[common_samples]
         metabolomics_aligned = (
-            metabolomics.loc[common_samples] if has_metabolomics else None
+            metabolomics.loc[common_samples] if has_metabolomics and metabolomics is not None else None
         )
 
         # Prepare metadata for corrected version
@@ -1124,7 +1132,7 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
         return False
 
 
-def generate_demo_data() -> str:
+def generate_demo_data() -> Optional[str]:
     """Generate demo data for all applications with full reproducibility"""
     print("\n🧬 Generating comprehensive demo datasets...")
 
@@ -1211,7 +1219,7 @@ def generate_demo_data() -> str:
         return None
 
 
-def _print_banner():
+def _print_banner() -> None:
     """Print application banner"""
     print("=" * 80)
     print("🧬 TIER 1 CELL REJUVENATION SUITE 🧬")
@@ -1225,7 +1233,7 @@ def _print_banner():
     print("=" * 80)
 
 
-def main():
+def main() -> None:
     """Main interactive application"""
     setup_logging()
 
@@ -1262,7 +1270,7 @@ def main():
         input("\n⏸️  Press Enter to continue...")
 
 
-def run_demo_workflow(demo_dir: str):
+def run_demo_workflow(demo_dir: str) -> None:
     """Run workflow with demo data"""
     app_options = [
         "RegenOmics Master Pipeline (Bulk RNA-seq)",
@@ -1301,7 +1309,7 @@ def run_demo_workflow(demo_dir: str):
         )
 
 
-def run_real_data_workflow():
+def run_real_data_workflow() -> None:
     """Run workflow with real datasets"""
     datasets = get_available_datasets()
 
@@ -1347,7 +1355,7 @@ def run_real_data_workflow():
             run_application("Multi-Omics Fusion Intelligence", data_path, "real")
 
 
-def show_application_info():
+def show_application_info() -> None:
     """Show information about the applications"""
     clear_screen()
     print_header()

@@ -52,7 +52,7 @@ class BulkAnalyzer:
         if biomarker_validation:
             self.bio_validator = BiologicallyValidatedRejuvenationScorer()
 
-        self.models = {}
+        models: Dict[str, Any] = {}
         self.scaler = StandardScaler()
         self.is_fitted = False
 

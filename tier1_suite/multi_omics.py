@@ -49,7 +49,7 @@ class MultiOmicsAnalyzer:
         # Initialize biological integrator
         self.bio_integrator = BiologicallyValidatedIntegrator()
 
-        self.models = {}
+        models: Dict[str, Any] = {}
         self.is_fitted = False
 
     def load_omics_data(
