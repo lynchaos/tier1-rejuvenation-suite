@@ -59,6 +59,10 @@ dependencies = [
     "pydantic>=1.10.0",
     "pydantic-settings>=2.0.0; python_version >= '3.8'",
     
+    # Reporting and Templating
+    "jinja2>=3.0.0",
+    "plotly>=5.0.0",
+    
     # Parallel Processing
     "joblib>=1.1.0",
     "dask>=2022.7.0",
@@ -85,8 +89,12 @@ single-cell = [
     "leidenalg>=0.8.10",
     "python-igraph>=0.10.0",
 ]
+reporting = [
+    "weasyprint>=56.0",
+    "kaleido>=0.2.1",  # For plotly static image export
+]
 all = [
-    "tier1-rejuvenation-suite[deep-learning,single-cell,web]",
+    "tier1-rejuvenation-suite[deep-learning,single-cell,web,reporting]",
 ]
 dev = [
     # Testing Framework
