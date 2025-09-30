@@ -291,9 +291,7 @@ def pipeline(
     Executes the full pipeline: QC → Embedding → Clustering → Trajectory analysis
     with biologically validated parameters and comprehensive reporting.
     """
-    console.print(
-        "🚀 [bold blue]Starting complete single-cell pipeline...[/bold blue]"
-    )
+    console.print("🚀 [bold blue]Starting complete single-cell pipeline...[/bold blue]")
 
     try:
         from tier1_suite.single_cell import SingleCellAnalyzer

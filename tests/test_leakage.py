@@ -94,9 +94,7 @@ class TestDataLeakage:
 
         # The selected features should potentially be different
         # (This demonstrates that feature selection with test labels can differ)
-        len(
-            set(selected_features_correct) & set(selected_features_incorrect)
-        )
+        len(set(selected_features_correct) & set(selected_features_incorrect))
 
         # If there's perfect overlap, that would be suspicious but not necessarily wrong
         # The key test is that we're using the correct approach

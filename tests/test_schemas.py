@@ -253,7 +253,8 @@ class TestDataSchemas:
         ]
         if len(high_missing_features) > 0:
             warnings.warn(
-                f"Found {len(high_missing_features)} features with >50% missing values", stacklevel=2
+                f"Found {len(high_missing_features)} features with >50% missing values",
+                stacklevel=2,
             )
 
     def test_data_type_consistency(self, sample_bulk_data, temp_dir):
@@ -374,7 +375,8 @@ class TestDataSchemas:
             negative_count = negative_mask.sum().sum()
             if negative_count > 0:
                 warnings.warn(
-                    f"Found {negative_count} negative values in expression data", stacklevel=2
+                    f"Found {negative_count} negative values in expression data",
+                    stacklevel=2,
                 )
 
         # Test for zero variance features
@@ -387,7 +389,9 @@ class TestDataSchemas:
                 zero_var_features.append(col)
 
         if zero_var_features:
-            warnings.warn(f"Found {len(zero_var_features)} zero-variance features", stacklevel=2)
+            warnings.warn(
+                f"Found {len(zero_var_features)} zero-variance features", stacklevel=2
+            )
 
         # Test for reasonable dynamic range
         for col in numeric_cols[:10]:  # Test subset for performance
@@ -516,7 +520,9 @@ class TestFileFormatValidation:
             assert loaded_metadata.index.equals(test_metadata.index)
 
         except ImportError:
-            warnings.warn("Parquet support not available (pyarrow not installed)", stacklevel=2)
+            warnings.warn(
+                "Parquet support not available (pyarrow not installed)", stacklevel=2
+            )
 
     def test_pickle_security_and_integrity(self, sample_bulk_data, temp_dir):
         """Test pickle format integrity (with security awareness)."""

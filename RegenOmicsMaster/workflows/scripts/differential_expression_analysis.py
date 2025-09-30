@@ -252,7 +252,9 @@ class DifferentialExpressionAnalyzer:
         # Add batch effects if provided
         if batch_vector is not None:
             unique_batches = np.unique(batch_vector)
-            for _i, batch in enumerate(unique_batches[1:], 1):  # Skip first as reference
+            for _i, batch in enumerate(
+                unique_batches[1:], 1
+            ):  # Skip first as reference
                 design_matrix = np.column_stack(
                     [design_matrix, (batch_vector == batch).astype(int)]
                 )

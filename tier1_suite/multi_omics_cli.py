@@ -293,9 +293,7 @@ def pipeline(
     Executes the full pipeline: Integration → Embedding → Evaluation → Discovery
     with comprehensive biological validation and reporting.
     """
-    console.print(
-        "🚀 [bold blue]Starting complete multi-omics pipeline...[/bold blue]"
-    )
+    console.print("🚀 [bold blue]Starting complete multi-omics pipeline...[/bold blue]")
 
     try:
         from tier1_suite.multi_omics import MultiOmicsAnalyzer
