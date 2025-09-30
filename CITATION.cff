@@ -4,15 +4,15 @@ message: "If you use this software, please cite it using the metadata from this 
 
 type: software
 license: MIT
-repository-code: "https://github.com/your-username/tier1-rejuvenation-suite"
-url: "https://github.com/your-username/tier1-rejuvenation-suite"
+repository-code: "https://github.com/lynchaos/tier1-rejuvenation-suite"
+url: "https://github.com/lynchaos/tier1-rejuvenation-suite"
 
 authors:
-  - family-names: "Your"
-    given-names: "Name"
-    orcid: "https://orcid.org/0000-0000-0000-0000"
-    email: "your.email@example.com"
-    affiliation: "Your Institution"
+  - family-names: "Yaylali"
+    given-names: "Kemal"
+    orcid: "https://orcid.org/0000-0003-1190-7807"
+    email: "kemal.yaylali@gmail.com"
+    affiliation: "Cellcraft"
 
 abstract: >
   The TIER 1 Rejuvenation Suite is a comprehensive Python package for multi-omics 
@@ -36,21 +36,21 @@ keywords:
   - python
 
 version: "1.0.0"
-date-released: "2024-12-19"
+date-released: "2025-09-30"
 
 preferred-citation:
   type: article
   title: "TIER 1 Rejuvenation Suite: A Comprehensive Multi-Omics Analysis Pipeline for Longevity Research"
   authors:
-    - family-names: "Your"
-      given-names: "Name"
-      orcid: "https://orcid.org/0000-0000-0000-0000"
+    - family-names: "Yaylali"
+      given-names: "Kemal"
+      orcid: "https://orcid.org/0000-0003-1190-7807"
   journal: "Bioinformatics"
   volume: XX
   issue: XX
   start: XX
   end: XX
-  year: 2024
+  year: 2025
   doi: "10.1093/bioinformatics/btXXXXXX"
 
 references:
@@ -93,10 +93,10 @@ identifiers:
     description: "PyPI package"
 
 contact:
-  - family-names: "Your"
-    given-names: "Name"
-    email: "your.email@example.com"
-    orcid: "https://orcid.org/0000-0000-0000-0000"
-    affiliation: "Your Institution"
+  - family-names: "Yaylali"
+    given-names: "Kemal"
+    email: "kemal.yaylali@gmail.com"
+    orcid: "https://orcid.org/0000-0003-1190-7807"
+    affiliation: "Cellcraft"
 
 commit: "main"
