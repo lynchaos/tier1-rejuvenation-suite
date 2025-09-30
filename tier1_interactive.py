@@ -16,14 +16,17 @@ Interactive system for cellular rejuvenation analysis with comprehensive biomark
 
 import os
 import sys
-import subprocess
 import logging
 from typing import Dict, List, Optional, Tuple, Any
 import pandas as pd
 import numpy as np
 from pathlib import Path
 import warnings
-warnings.filterwarnings('ignore')
+
+# Filter specific warnings rather than all warnings
+warnings.filterwarnings('ignore', category=FutureWarning, module='pandas')
+warnings.filterwarnings('ignore', category=UserWarning, module='scanpy')
+warnings.filterwarnings('ignore', category=RuntimeWarning, module='numpy')
 
 # Add project root to path for imports
 project_root = Path(__file__).parent
@@ -66,8 +69,9 @@ def print_menu(title: str, options: List[str]) -> int:
                 return choice
             else:
                 print(f"❌ Please enter a number between 0 and {len(options)}")
-        except ValueError:
-            print("❌ Please enter a valid number")
+        except (ValueError, EOFError, KeyboardInterrupt):
+            print("❌ Invalid or interrupted input")
+            return 0
 
 def download_dataset(dataset_info: Dict) -> Optional[str]:
     """Download a specific dataset"""
@@ -91,7 +95,7 @@ def download_dataset(dataset_info: Dict) -> Optional[str]:
         return None
 
 def download_scanpy_dataset(dataset_info: Dict, data_dir: Path) -> str:
-    """Download dataset using scanpy"""
+    """Download dataset using scanpy with version compatibility"""
     try:
         import scanpy as sc
         import pandas as pd
@@ -99,15 +103,27 @@ def download_scanpy_dataset(dataset_info: Dict, data_dir: Path) -> str:
         
         print("🔄 Loading from scanpy...")
         
-        if dataset_info['name'] == 'PBMC 3K':
-            adata = sc.datasets.pbmc3k_processed()
-        elif dataset_info['name'] == 'PBMC 68K':
-            adata = sc.datasets.pbmc68k_reduced()
-        else:
-            raise ValueError(f"Unknown dataset: {dataset_info['name']}")
-        
-        # Add aging-related annotations
+        # Set reproducible seed for all randomized operations
         np.random.seed(42)
+        
+        # Try different datasets with graceful fallbacks
+        try:
+            if dataset_info['name'] == 'PBMC 3K':
+                adata = sc.datasets.pbmc3k_processed()
+            elif dataset_info['name'] == 'PBMC 68K':
+                # First try pbmc68k_reduced, fall back to pbmc3k if unavailable
+                try:
+                    adata = sc.datasets.pbmc68k_reduced()
+                except (AttributeError, ValueError, Exception) as e:
+                    print(f"⚠️  PBMC 68K unavailable ({e}), using PBMC 3K instead...")
+                    adata = sc.datasets.pbmc3k_processed()
+            else:
+                raise ValueError(f"Unknown dataset: {dataset_info['name']}")
+        except Exception as e:
+            print(f"⚠️  Dataset loading failed ({e}), falling back to PBMC 3K...")
+            adata = sc.datasets.pbmc3k_processed()
+        
+        # Add aging-related annotations with fixed seed
         n_cells = adata.n_obs
         adata.obs['age_group'] = np.random.choice(['young', 'old'], n_cells, p=[0.6, 0.4])
         adata.obs['treatment'] = np.random.choice(['control', 'intervention'], n_cells, p=[0.7, 0.3])
@@ -142,13 +158,17 @@ def download_geo_dataset(dataset_info: Dict, data_dir: Path) -> str:
         return None
 
 def generate_sample_dataset(dataset_info: Dict, data_dir: Path) -> str:
-    """Generate sample dataset"""
+    """Generate sample dataset with reproducible seeding"""
     import pandas as pd
     import numpy as np
+    import os
     
     print("🔄 Generating sample dataset...")
     
+    # Ensure full reproducibility
     np.random.seed(42)
+    os.environ['PYTHONHASHSEED'] = '42'
+    
     n_samples = dataset_info.get('n_samples', 100)
     n_features = dataset_info.get('n_features', 1000)
     
@@ -315,6 +335,11 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
     try:
         import pandas as pd
         import numpy as np
+        import os
+        
+        # Ensure reproducibility across all randomized operations
+        np.random.seed(42)
+        os.environ['PYTHONHASHSEED'] = '42'
         
         # Try to import scientifically corrected version first
         try:
@@ -663,6 +688,21 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
     try:
         import pandas as pd
         import numpy as np
+        import os
+        
+        # Ensure reproducibility for autoencoder initialization and training
+        np.random.seed(42)
+        os.environ['PYTHONHASHSEED'] = '42'
+        
+        # Set PyTorch seed if available
+        try:
+            import torch
+            torch.manual_seed(42)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed(42)
+                torch.cuda.manual_seed_all(42)
+        except ImportError:
+            pass  # PyTorch not available
         
         # Try to import scientifically corrected version first
         try:
@@ -787,7 +827,7 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
         return False
 
 def generate_demo_data() -> str:
-    """Generate demo data for all applications"""
+    """Generate demo data for all applications with full reproducibility"""
     print("\n🧬 Generating comprehensive demo datasets...")
     
     demo_dir = Path("demo_data")
@@ -797,8 +837,11 @@ def generate_demo_data() -> str:
         import pandas as pd
         import numpy as np
         import anndata as ad
+        import os
         
+        # Ensure full reproducibility
         np.random.seed(42)
+        os.environ['PYTHONHASHSEED'] = '42'
         
         # 1. Bulk RNA-seq data
         print("📊 Creating bulk RNA-seq data...")
@@ -1009,14 +1052,14 @@ def show_application_info():
     print("   • Report: Systems biology insights with clinical applications")
     print()
     
-    print("� Scientific Reporting System")
+    print("📊 Scientific Reporting System")
     print("   • Peer-review quality reports with rigorous statistical analysis")
     print("   • Publication-ready figures and comprehensive methodology sections") 
     print("   • Biological interpretation and clinical translation insights")
     print("   • All reports saved in 'reports/' directory with timestamp")
     print()
     
-    print("�🔧 Technical Stack")
+    print("🔧 Technical Stack")
     print("   • Python 3.11.2 with 70+ scientific packages")
     print("   • Machine Learning: scikit-learn, XGBoost, SHAP")
     print("   • Deep Learning: PyTorch autoencoders") 
