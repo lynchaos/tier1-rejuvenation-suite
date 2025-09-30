@@ -357,20 +357,31 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
                 index=[f'Sample_{i:03d}' for i in range(n_samples)],
                 columns=[f'GENE_{i:04d}' for i in range(n_genes)]
             )
-            
-            # Add biological metadata for corrected version
-            if is_corrected:
-                np.random.seed(42)
-                data['age'] = np.random.normal(50, 15, n_samples).clip(18, 90).astype(int)
-                data['sex'] = np.random.choice(['M', 'F'], n_samples)
-                print("✅ Added synthetic biological metadata for validation")
-                
         else:
             print(f"❌ Unsupported file format: {data_path}")
             return False
         
-        print(f"✅ Loaded data: {data.shape}")
-        print(f"📊 Samples: {data.shape[0]}, Genes: {data.shape[1]}")
+        # Always separate expression data from metadata
+        # Keep only numeric columns for expression data
+        expr_data = data.select_dtypes(include=[np.number])
+        
+        # Create metadata DataFrame for corrected version
+        metadata_df = None
+        if is_corrected:
+            # Generate synthetic biological metadata
+            np.random.seed(42)
+            n_samples = len(expr_data)
+            metadata_df = pd.DataFrame({
+                'age': np.random.normal(50, 15, n_samples).clip(18, 90).astype(int),
+                'sex': np.random.choice(['M', 'F'], n_samples),
+                'batch': np.random.choice(['A', 'B', 'C'], n_samples)
+            }, index=expr_data.index)
+            print("✅ Generated biological metadata for validation")
+        
+        print(f"✅ Loaded expression data: {expr_data.shape}")
+        print(f"📊 Samples: {expr_data.shape[0]}, Genes: {expr_data.shape[1]}")
+        if metadata_df is not None:
+            print(f"📋 Metadata columns: {list(metadata_df.columns)}")
         
         # Initialize scorer with biological validation
         if is_corrected:
@@ -387,7 +398,16 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         
         # Run scoring with biological validation
         try:
-            result_df = scorer.score_cells(data)
+            # Always use clean expression data for scoring
+            if is_corrected and metadata_df is not None:
+                # Try to pass metadata to corrected scorer if supported
+                try:
+                    result_df = scorer.score_cells(expr_data, metadata=metadata_df)
+                except TypeError:
+                    # Fallback if scorer doesn't support metadata parameter
+                    result_df = scorer.score_cells(expr_data)
+            else:
+                result_df = scorer.score_cells(expr_data)
             
             # Extract scores based on version
             if is_corrected:
@@ -406,13 +426,13 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
                 from cell_rejuvenation_scoring import CellRejuvenationScorer
                 fallback_scorer = CellRejuvenationScorer()
                 
-                # Remove metadata columns for original scorer
-                data_clean = data.select_dtypes(include=[np.number])
-                result_df = fallback_scorer.score_cells(data_clean)
+                # Use already cleaned expression data
+                result_df = fallback_scorer.score_cells(expr_data)
                 
                 score_col = 'rejuvenation_score'
                 scores = result_df[score_col].values
                 is_corrected = False  # Mark as using fallback
+                metadata_df = None  # Clear metadata since fallback doesn't use it
                 
                 print("✅ Fallback analysis successful!")
             else:
@@ -474,7 +494,11 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
             print(f"\n📋 Generating {report_name} report...")
             
             # Standardized payload and metadata
-            payload = {"results": result_df}
+            payload = {
+                "results": result_df,
+                "expression_data": expr_data,
+                "sample_metadata": metadata_df
+            }
             metadata = {
                 'dataset_name': data_path.split('/')[-1] if isinstance(data_path, str) else "Generated Dataset",
                 'bootstrap_samples': 100,
@@ -487,7 +511,10 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
                 'age_stratified': is_corrected,
                 'peer_reviewed_markers': is_corrected,
                 'n_samples': len(result_df),
-                'corrected': is_corrected
+                'n_genes': expr_data.shape[1],
+                'corrected': is_corrected,
+                'has_metadata': metadata_df is not None,
+                'metadata_columns': list(metadata_df.columns) if metadata_df is not None else []
             }
             
             report_path = generate_comprehensive_report(report_name, payload, metadata)
