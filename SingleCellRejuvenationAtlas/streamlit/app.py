@@ -300,7 +300,7 @@ elif analysis_type == "Digital Twin Simulator":
             """
             System of ODEs describing cellular rejuvenation dynamics
             """
-            S, P, A, I, D, M = (
+            S, P, A, Inflam, D, M = (
                 state  # Senescence, Pluripotency, Autophagy, Inflammation, DNA damage, Metabolism
             )
 
@@ -317,7 +317,7 @@ elif analysis_type == "Digital Twin Simulator":
             dS_dt = (
                 -0.1 * treatment * S * (1 - S)
                 - 0.05 * A * S
-                + 0.03 * I * (1 - S)
+                + 0.03 * Inflam * (1 - S)
                 + 0.02 * D * (1 - S)
             )
 
@@ -325,7 +325,7 @@ elif analysis_type == "Digital Twin Simulator":
             dP_dt = (
                 0.08 * treatment * (1 - P) * (1 - 0.5 * S)
                 + 0.04 * A * (1 - P)
-                - 0.02 * P * I
+                - 0.02 * P * Inflam
             )
 
             # Autophagy dynamics (enhanced by treatment)
@@ -336,24 +336,24 @@ elif analysis_type == "Digital Twin Simulator":
             )
 
             # Inflammation dynamics (suppressed by treatment)
-            dI_dt = (
-                -0.15 * inflammation_supp * treatment * I
-                + 0.05 * S * (1 - I)
-                - 0.06 * A * I
+            dInflam_dt = (
+                -0.15 * inflammation_supp * treatment * Inflam
+                + 0.05 * S * (1 - Inflam)
+                - 0.06 * A * Inflam
             )
 
             # DNA damage dynamics (repaired by treatment)
-            dD_dt = -0.2 * dna_repair * treatment * D - 0.1 * A * D + 0.04 * I * (1 - D)
+            dD_dt = -0.2 * dna_repair * treatment * D - 0.1 * A * D + 0.04 * Inflam * (1 - D)
 
             # Metabolic health dynamics (optimized by treatment)
             dM_dt = (
                 0.1 * metabolic_opt * treatment * (1 - M)
                 + 0.06 * A * (1 - M)
                 - 0.03 * S * M
-                - 0.02 * I * M
+                - 0.02 * Inflam * M
             )
 
-            return [dS_dt, dP_dt, dA_dt, dI_dt, dD_dt, dM_dt]
+            return [dS_dt, dP_dt, dA_dt, dInflam_dt, dD_dt, dM_dt]
 
         # Initial conditions
         initial_conditions = [

@@ -102,7 +102,7 @@ def run_analysis_with_reporting():
         try:
             version = pkg_resources.get_distribution(package).version
             software_versions[package] = version
-        except:
+        except Exception:
             software_versions[package] = "unknown"
 
     # Set methods section

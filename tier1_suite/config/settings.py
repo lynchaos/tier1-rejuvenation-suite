@@ -4,7 +4,6 @@ Centralized configuration for all hyperparameters and settings.
 """
 
 try:
-    from pydantic import Field, validator
     from pydantic_settings import BaseSettings
 except ImportError:
     from pydantic import BaseSettings
@@ -380,6 +379,3 @@ def create_provenance_tracker(
         config=config_dict,
         output_dir=config.output_directory if config else "outputs",
     )
-    template = TierConfig()
-    template.to_yaml(output_path)
-    print(f"Configuration template saved to: {output_path}")

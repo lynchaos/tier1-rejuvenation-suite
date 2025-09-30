@@ -28,10 +28,11 @@ except ImportError:
     PDF_AVAILABLE = False
 
 try:
-    import umap
+    import umap as _umap  # Import but assign to indicate conditional usage
 
     UMAP_AVAILABLE = True
 except ImportError:
+    _umap = None
     UMAP_AVAILABLE = False
 
 

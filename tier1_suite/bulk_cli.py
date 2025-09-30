@@ -84,7 +84,7 @@ def fit(
 
     except Exception as e:
         console.print(f"❌ [red]Error during model fitting: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @bulk_app.command()
@@ -141,7 +141,7 @@ def predict(
 
     except Exception as e:
         console.print(f"❌ [red]Error during prediction: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @bulk_app.command()
@@ -188,7 +188,7 @@ def validate(
 
     except Exception as e:
         console.print(f"❌ [red]Error during validation: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 if __name__ == "__main__":
