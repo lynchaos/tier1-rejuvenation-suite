@@ -1,5 +1,9 @@
 #!/bin/bash
-# TIER 1 Rejuvenation Suite - Environment Management Script
+#!/bin/bash
+
+# TIER 1 Rejuvenation Suite Environment Manager  
+# Comprehensive script for managing development and production environments
+# Now includes automated testing functionality
 # ========================================================
 #
 # This script helps manage conda environments and dependency locking

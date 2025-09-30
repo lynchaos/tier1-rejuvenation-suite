@@ -18,10 +18,10 @@ try:
     from .bulk import BulkAnalyzer
     from .single_cell import SingleCellAnalyzer
     from .multi_omics import MultiOmicsAnalyzer
-    
+
     __all__ = [
         "BulkAnalyzer",
-        "SingleCellAnalyzer", 
+        "SingleCellAnalyzer",
         "MultiOmicsAnalyzer",
     ]
 except ImportError:
