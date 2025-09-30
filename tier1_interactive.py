@@ -29,18 +29,6 @@ warnings.filterwarnings('ignore')
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-# Scientific correction notice
-print("="*80)
-print("🧬 TIER 1 CELL REJUVENATION SUITE 🧬")
-print("="*80)
-print("• 110+ peer-reviewed aging biomarkers integrated")
-print("• Ensemble ML models with cross-validation")
-print("• 12 biological pathway categories")
-print("• Scientific reporting system")
-print("• Age-stratified statistical analysis")
-print("• Interactive analysis interface")
-print("="*80)
-
 def setup_logging():
     """Setup clean logging for interactive use"""
     logging.basicConfig(
@@ -877,6 +865,18 @@ def generate_demo_data() -> str:
 def main():
     """Main interactive application"""
     setup_logging()
+    
+    # Scientific correction notice - only when run directly
+    print("="*80)
+    print("🧬 TIER 1 CELL REJUVENATION SUITE 🧬")
+    print("="*80)
+    print("• 110+ peer-reviewed aging biomarkers integrated")
+    print("• Ensemble ML models with cross-validation")
+    print("• 12 biological pathway categories")
+    print("• Scientific reporting system")
+    print("• Age-stratified statistical analysis")
+    print("• Interactive analysis interface")
+    print("="*80)
     
     while True:
         clear_screen()
