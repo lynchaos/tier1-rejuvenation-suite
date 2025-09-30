@@ -117,3 +117,8 @@ DATASETS.md
 *.tmp
 *.temp
 *.bak
+# Generated outputs (data governance)
+outputs/
+*.log
+provenance/
+environment_lock.txt
