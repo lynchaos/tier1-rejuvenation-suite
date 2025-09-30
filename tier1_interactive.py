@@ -29,8 +29,6 @@ warnings.filterwarnings('ignore')
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from scientific_reporter import ScientificReporter
-
 # Scientific correction notice
 print("="*80)
 print("🧬 TIER 1 CELL REJUVENATION SUITE 🧬")
@@ -500,6 +498,8 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
             else:
                 print(f"🔬 Report includes: statistical analysis, biological interpretation, methodology")
             
+        except ImportError:
+            print(f"⚠️  Reporting module missing; skipping report generation.")
         except Exception as e:
             print(f"⚠️  Could not generate report: {e}")
         
@@ -611,6 +611,8 @@ def run_single_cell_atlas(data_path: str, data_type: str) -> bool:
             print(f"📄 Scientific report saved: {report_path}")
             print(f"🔬 Report includes: trajectory analysis, clustering validation, biological interpretation")
             
+        except ImportError:
+            print(f"⚠️  Reporting module missing; skipping report generation.")
         except Exception as e:
             print(f"⚠️  Could not generate report: {e}")
         
@@ -738,6 +740,8 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
             print(f"📄 Scientific report saved: {report_path}")
             print(f"🔬 Report includes: integration methodology, systems biology insights, clinical applications")
             
+        except ImportError:
+            print(f"⚠️  Reporting module missing; skipping report generation.")
         except Exception as e:
             print(f"⚠️  Could not generate report: {e}")
         
