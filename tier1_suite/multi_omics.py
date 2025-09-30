@@ -7,12 +7,13 @@ Main analyzer class for multi-omics data integration,
 fusion analysis, and comprehensive evaluation.
 """
 
-import pandas as pd
-import numpy as np
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
 import pickle
 import warnings
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import pandas as pd
 
 warnings.filterwarnings("ignore")
 
@@ -75,7 +76,7 @@ class MultiOmicsAnalyzer:
                 elif "methylation" in filename or "dna" in filename:
                     data_type = "methylation"
                 else:
-                    data_type = f"omics_{i+1}"
+                    data_type = f"omics_{i + 1}"
 
             # Load data
             file_path_obj = Path(file_path)
@@ -286,7 +287,8 @@ class MultiOmicsAnalyzer:
         factors_df = pd.DataFrame(
             integration_results["factors"],
             columns=[
-                f"Factor_{i+1}" for i in range(integration_results["factors"].shape[1])
+                f"Factor_{i + 1}"
+                for i in range(integration_results["factors"].shape[1])
             ],
         )
         factors_df.to_csv(output_path / "integration_factors.csv")
@@ -361,7 +363,7 @@ class MultiOmicsAnalyzer:
 
         # Create embeddings DataFrame
         embeddings_df = pd.DataFrame(
-            factors, columns=[f"Factor_{i+1}" for i in range(factors.shape[1])]
+            factors, columns=[f"Factor_{i + 1}" for i in range(factors.shape[1])]
         )
 
         # Add UMAP embedding if requested
@@ -392,13 +394,15 @@ class MultiOmicsAnalyzer:
         embeddings: pd.DataFrame,
         reference_data: Optional[str] = None,
         output_dir: str = "evaluation_results",
-        metrics: List[str] = ["silhouette", "ari", "nmi"],
+        metrics: List[str] = None,
         biomarker_validation: bool = True,
         pathway_enrichment: bool = True,
         generate_report: bool = True,
     ) -> Dict[str, Any]:
         """Evaluate integration quality."""
 
+        if metrics is None:
+            metrics = ["silhouette", "ari", "nmi"]
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 

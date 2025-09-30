@@ -25,13 +25,14 @@ import numpy as np
 import pandas as pd
 
 # Filter specific warnings rather than all warnings
-warnings.filterwarnings('ignore', category=FutureWarning, module='pandas')
-warnings.filterwarnings('ignore', category=UserWarning, module='scanpy')
-warnings.filterwarnings('ignore', category=RuntimeWarning, module='numpy')
+warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
+warnings.filterwarnings("ignore", category=UserWarning, module="scanpy")
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="numpy")
 
 # Add project root to path for imports
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
+
 
 def _emit_report(name: str, payload: dict, metadata: dict = None):
     """Unified scientific report generation with error handling"""
@@ -49,11 +50,18 @@ def _emit_report(name: str, payload: dict, metadata: dict = None):
         print(f"⚠️  Report generation failed: {e}")
         return None
 
+
 def _test_normality(scores: np.ndarray) -> dict:
     """Return dict of normality diagnostics; degrade gracefully if SciPy absent."""
-    out = {"method": None, "pvalue": np.nan, "skew": float(pd.Series(scores).skew()), "kurtosis": float(pd.Series(scores).kurt())}
+    out = {
+        "method": None,
+        "pvalue": np.nan,
+        "skew": float(pd.Series(scores).skew()),
+        "kurtosis": float(pd.Series(scores).kurt()),
+    }
     try:
         from scipy.stats import normaltest, shapiro
+
         out["method"] = "dagostino_pearson"
         stat, p = normaltest(scores) if len(scores) >= 8 else shapiro(scores)
         out["pvalue"] = float(p)
@@ -63,69 +71,85 @@ def _test_normality(scores: np.ndarray) -> dict:
         out["method"] = "skew_kurtosis_only"
         return out
 
+
 def _extract_single_cell_metrics(adata, results):
     """Extract real metrics from single-cell analysis instead of placeholders"""
 
     metrics = {}
 
     # Clustering metrics
-    if 'leiden' in adata.obs.columns:
-        clusters = adata.obs['leiden'].unique()
-        metrics['n_clusters'] = len(clusters)
-        metrics['min_cluster_size'] = int(adata.obs['leiden'].value_counts().min())
-        metrics['max_cluster_size'] = int(adata.obs['leiden'].value_counts().max())
-        metrics['modularity'] = 'Computed' if len(clusters) > 1 else 'N/A'
+    if "leiden" in adata.obs.columns:
+        clusters = adata.obs["leiden"].unique()
+        metrics["n_clusters"] = len(clusters)
+        metrics["min_cluster_size"] = int(adata.obs["leiden"].value_counts().min())
+        metrics["max_cluster_size"] = int(adata.obs["leiden"].value_counts().max())
+        metrics["modularity"] = "Computed" if len(clusters) > 1 else "N/A"
     else:
-        metrics['n_clusters'] = 1
-        metrics['min_cluster_size'] = int(adata.n_obs)
-        metrics['max_cluster_size'] = int(adata.n_obs)
-        metrics['modularity'] = 'N/A'
+        metrics["n_clusters"] = 1
+        metrics["min_cluster_size"] = int(adata.n_obs)
+        metrics["max_cluster_size"] = int(adata.n_obs)
+        metrics["modularity"] = "N/A"
 
     # Basic QC metrics
-    if 'total_counts' in adata.obs.columns:
-        metrics['mean_counts_per_cell'] = float(adata.obs['total_counts'].mean())
+    if "total_counts" in adata.obs.columns:
+        metrics["mean_counts_per_cell"] = float(adata.obs["total_counts"].mean())
     else:
-        metrics['mean_counts_per_cell'] = 'N/A'
+        metrics["mean_counts_per_cell"] = "N/A"
 
-    if 'n_genes_by_counts' in adata.obs.columns:
-        metrics['mean_genes_per_cell'] = float(adata.obs['n_genes_by_counts'].mean())
+    if "n_genes_by_counts" in adata.obs.columns:
+        metrics["mean_genes_per_cell"] = float(adata.obs["n_genes_by_counts"].mean())
     else:
-        metrics['mean_genes_per_cell'] = 'N/A'
+        metrics["mean_genes_per_cell"] = "N/A"
 
     # Mitochondrial gene threshold
-    mt_cols = [col for col in adata.obs.columns if 'mt' in col.lower() or 'mito' in col.lower()]
+    mt_cols = [
+        col for col in adata.obs.columns if "mt" in col.lower() or "mito" in col.lower()
+    ]
     if mt_cols:
-        metrics['mt_threshold'] = 20  # Standard threshold
-        metrics['high_mt_cells'] = int((adata.obs[mt_cols[0]] > 20).sum()) if len(mt_cols) > 0 else 0
+        metrics["mt_threshold"] = 20  # Standard threshold
+        metrics["high_mt_cells"] = (
+            int((adata.obs[mt_cols[0]] > 20).sum()) if len(mt_cols) > 0 else 0
+        )
     else:
-        metrics['mt_threshold'] = 'Not applied'
-        metrics['high_mt_cells'] = 0
+        metrics["mt_threshold"] = "Not applied"
+        metrics["high_mt_cells"] = 0
 
     # PCA variance if available
-    if 'pca' in adata.obsm.keys():
-        if hasattr(adata, 'uns') and 'pca' in adata.uns and 'variance_ratio' in adata.uns['pca']:
-            metrics['pca_variance_explained'] = float(adata.uns['pca']['variance_ratio'][:10].sum())
+    if "pca" in adata.obsm.keys():
+        if (
+            hasattr(adata, "uns")
+            and "pca" in adata.uns
+            and "variance_ratio" in adata.uns["pca"]
+        ):
+            metrics["pca_variance_explained"] = float(
+                adata.uns["pca"]["variance_ratio"][:10].sum()
+            )
         else:
-            metrics['pca_variance_explained'] = 'Available'
+            metrics["pca_variance_explained"] = "Available"
     else:
-        metrics['pca_variance_explained'] = 'N/A'
+        metrics["pca_variance_explained"] = "N/A"
 
     # Trajectory analysis
-    metrics['trajectory_analysis'] = 'Completed' if metrics['n_clusters'] > 1 else 'Skipped (single cluster)'
-    metrics['rejuvenation_detected'] = bool(results is not None)
+    metrics["trajectory_analysis"] = (
+        "Completed" if metrics["n_clusters"] > 1 else "Skipped (single cluster)"
+    )
+    metrics["rejuvenation_detected"] = bool(results is not None)
 
     return metrics
+
 
 def setup_logging():
     """Setup clean logging for interactive use"""
     logging.basicConfig(
         level=logging.WARNING,  # Only show warnings and errors
-        format='%(levelname)s: %(message)s'
+        format="%(levelname)s: %(message)s",
     )
+
 
 def clear_screen():
     """Clear terminal screen"""
-    os.system('clear' if os.name == 'posix' else 'cls')
+    os.system("clear" if os.name == "posix" else "cls")
+
 
 def print_header():
     """Print application header"""
@@ -134,6 +158,7 @@ def print_header():
     print("🔬        AI-Powered Bioinformatics for Cell Rejuvenation       🔬")
     print("🧬" + "=" * 78 + "🧬")
     print()
+
 
 def print_menu(title: str, options: List[str]) -> int:
     """Print menu and get user choice"""
@@ -157,6 +182,7 @@ def print_menu(title: str, options: List[str]) -> int:
             print("❌ Invalid/aborted input — exiting to previous menu.")
             return 0
 
+
 def download_dataset(dataset_info: Dict) -> Optional[str]:
     """Download a specific dataset"""
     print(f"\n📥 Downloading {dataset_info['name']}...")
@@ -164,19 +190,20 @@ def download_dataset(dataset_info: Dict) -> Optional[str]:
     print(f"📊 Size: {dataset_info['size']}")
 
     # Create data directory
-    data_dir = Path("real_data") / dataset_info['type']
+    data_dir = Path("real_data") / dataset_info["type"]
     data_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        if dataset_info['method'] == 'scanpy':
+        if dataset_info["method"] == "scanpy":
             return download_scanpy_dataset(dataset_info, data_dir)
-        elif dataset_info['method'] == 'geo':
+        elif dataset_info["method"] == "geo":
             return download_geo_dataset(dataset_info, data_dir)
-        elif dataset_info['method'] == 'generate':
+        elif dataset_info["method"] == "generate":
             return generate_sample_dataset(dataset_info, data_dir)
     except Exception as e:
         print(f"❌ Download failed: {e}")
         return None
+
 
 def download_scanpy_dataset(dataset_info: Dict, data_dir: Path) -> str:
     """Download dataset using scanpy with version compatibility"""
@@ -191,9 +218,9 @@ def download_scanpy_dataset(dataset_info: Dict, data_dir: Path) -> str:
 
         # Try different datasets with graceful fallbacks
         try:
-            if dataset_info['name'] == 'PBMC 3K':
+            if dataset_info["name"] == "PBMC 3K":
                 adata = sc.datasets.pbmc3k_processed()
-            elif dataset_info['name'] == 'PBMC 68K':
+            elif dataset_info["name"] == "PBMC 68K":
                 # First try pbmc68k_reduced, fall back to pbmc3k if unavailable
                 try:
                     adata = sc.datasets.pbmc68k_reduced()
@@ -208,8 +235,12 @@ def download_scanpy_dataset(dataset_info: Dict, data_dir: Path) -> str:
 
         # Add aging-related annotations with fixed seed
         n_cells = adata.n_obs
-        adata.obs['age_group'] = np.random.choice(['young', 'old'], n_cells, p=[0.6, 0.4])
-        adata.obs['treatment'] = np.random.choice(['control', 'intervention'], n_cells, p=[0.7, 0.3])
+        adata.obs["age_group"] = np.random.choice(
+            ["young", "old"], n_cells, p=[0.6, 0.4]
+        )
+        adata.obs["treatment"] = np.random.choice(
+            ["control", "intervention"], n_cells, p=[0.7, 0.3]
+        )
 
         filename = data_dir / f"{dataset_info['name'].lower().replace(' ', '_')}.h5ad"
         adata.write(filename)
@@ -223,11 +254,12 @@ def download_scanpy_dataset(dataset_info: Dict, data_dir: Path) -> str:
         print("❌ Scanpy not available")
         return None
 
+
 def download_geo_dataset(dataset_info: Dict, data_dir: Path) -> str:
     """Download GEO dataset metadata"""
     import urllib.request
 
-    geo_id = dataset_info['geo_id']
+    geo_id = dataset_info["geo_id"]
     url = f"https://ftp.ncbi.nlm.nih.gov/geo/series/{geo_id[:6]}nnn/{geo_id}/soft/{geo_id}_family.soft.gz"
     filename = data_dir / f"{geo_id}_metadata.soft.gz"
 
@@ -240,6 +272,7 @@ def download_geo_dataset(dataset_info: Dict, data_dir: Path) -> str:
         print(f"❌ GEO download failed: {e}")
         return None
 
+
 def generate_sample_dataset(dataset_info: Dict, data_dir: Path) -> str:
     """Generate sample dataset with reproducible seeding"""
     import os
@@ -251,15 +284,15 @@ def generate_sample_dataset(dataset_info: Dict, data_dir: Path) -> str:
 
     # Ensure full reproducibility
     np.random.seed(42)
-    os.environ['PYTHONHASHSEED'] = '42'
+    os.environ["PYTHONHASHSEED"] = "42"
 
-    n_samples = dataset_info.get('n_samples', 100)
-    n_features = dataset_info.get('n_features', 1000)
+    n_samples = dataset_info.get("n_samples", 100)
+    n_features = dataset_info.get("n_features", 1000)
 
     # Generate data based on type
-    if dataset_info['type'] == 'bulk_rnaseq':
+    if dataset_info["type"] == "bulk_rnaseq":
         # Add age-related signal to the data
-        age_groups = np.random.choice(['young', 'old'], n_samples, p=[0.5, 0.5])
+        age_groups = np.random.choice(["young", "old"], n_samples, p=[0.5, 0.5])
 
         # Create age-related expression patterns
         base_expression = np.random.lognormal(0, 1, (n_samples, n_features))
@@ -267,125 +300,133 @@ def generate_sample_dataset(dataset_info: Dict, data_dir: Path) -> str:
         # Add aging signature to some genes
         aging_genes = n_features // 4  # 25% of genes show age effects
         for i in range(n_samples):
-            if age_groups[i] == 'old':
+            if age_groups[i] == "old":
                 # Increase expression of "aging" genes
                 base_expression[i, :aging_genes] *= 1.5
                 # Decrease expression of "rejuvenation" genes
-                base_expression[i, aging_genes:aging_genes*2] *= 0.7
+                base_expression[i, aging_genes : aging_genes * 2] *= 0.7
 
         data = pd.DataFrame(
             base_expression,
-            index=[f'Sample_{i:03d}' for i in range(n_samples)],
-            columns=[f'GENE_{i:04d}' for i in range(n_features)]
+            index=[f"Sample_{i:03d}" for i in range(n_samples)],
+            columns=[f"GENE_{i:04d}" for i in range(n_features)],
         )
 
         # Add sample metadata
-        metadata = pd.DataFrame({
-            'sample_id': data.index,
-            'age_group': age_groups,
-            'age_numeric': np.where(age_groups == 'young',
-                                   np.random.randint(20, 40, n_samples),
-                                   np.random.randint(60, 80, n_samples)),
-            'tissue': np.random.choice(['brain', 'liver', 'muscle'], n_samples)
-        })
+        metadata = pd.DataFrame(
+            {
+                "sample_id": data.index,
+                "age_group": age_groups,
+                "age_numeric": np.where(
+                    age_groups == "young",
+                    np.random.randint(20, 40, n_samples),
+                    np.random.randint(60, 80, n_samples),
+                ),
+                "tissue": np.random.choice(["brain", "liver", "muscle"], n_samples),
+            }
+        )
 
-        filename = data_dir / 'rnaseq_expression.csv'
+        filename = data_dir / "rnaseq_expression.csv"
         data.to_csv(filename)
 
         # Save metadata separately
-        metadata.to_csv(data_dir / 'sample_metadata.csv', index=False)
+        metadata.to_csv(data_dir / "sample_metadata.csv", index=False)
 
-    elif dataset_info['type'] == 'multi_omics':
+    elif dataset_info["type"] == "multi_omics":
         # Create metadata
-        metadata = pd.DataFrame({
-            'sample_id': [f'Sample_{i:03d}' for i in range(n_samples)],
-            'age': np.random.randint(20, 80, n_samples),
-            'condition': np.random.choice(['young', 'old'], n_samples),
-            'tissue': np.random.choice(['brain', 'liver', 'muscle'], n_samples)
-        })
+        metadata = pd.DataFrame(
+            {
+                "sample_id": [f"Sample_{i:03d}" for i in range(n_samples)],
+                "age": np.random.randint(20, 80, n_samples),
+                "condition": np.random.choice(["young", "old"], n_samples),
+                "tissue": np.random.choice(["brain", "liver", "muscle"], n_samples),
+            }
+        )
 
         # RNA-seq data
         rnaseq = pd.DataFrame(
             np.random.lognormal(0, 1, (n_samples, 1000)),
-            index=metadata['sample_id'],
-            columns=[f'GENE_{i:04d}' for i in range(1000)]
+            index=metadata["sample_id"],
+            columns=[f"GENE_{i:04d}" for i in range(1000)],
         )
 
         # Proteomics data
         proteomics = pd.DataFrame(
             np.random.normal(0, 1, (n_samples, 500)),
-            index=metadata['sample_id'],
-            columns=[f'PROT_{i:04d}' for i in range(500)]
+            index=metadata["sample_id"],
+            columns=[f"PROT_{i:04d}" for i in range(500)],
         )
 
         # Metabolomics data
         metabolomics = pd.DataFrame(
             np.random.lognormal(0, 0.5, (n_samples, 200)),
-            index=metadata['sample_id'],
-            columns=[f'METAB_{i:03d}' for i in range(200)]
+            index=metadata["sample_id"],
+            columns=[f"METAB_{i:03d}" for i in range(200)],
         )
 
         # Save all files
-        metadata.to_csv(data_dir / 'metadata.csv', index=False)
-        rnaseq.to_csv(data_dir / 'rnaseq.csv')
-        proteomics.to_csv(data_dir / 'proteomics.csv')
-        metabolomics.to_csv(data_dir / 'metabolomics.csv')
+        metadata.to_csv(data_dir / "metadata.csv", index=False)
+        rnaseq.to_csv(data_dir / "rnaseq.csv")
+        proteomics.to_csv(data_dir / "proteomics.csv")
+        metabolomics.to_csv(data_dir / "metabolomics.csv")
 
-        filename = data_dir / 'metadata.csv'
+        filename = data_dir / "metadata.csv"
 
     print(f"✅ Generated: {filename}")
     return str(filename)
 
+
 def get_available_datasets() -> Dict[str, List[Dict]]:
     """Define available datasets"""
     return {
-        'single_cell': [
+        "single_cell": [
             {
-                'name': 'PBMC 3K',
-                'description': 'Peripheral blood mononuclear cells (3,000 cells)',
-                'size': '~5 MB',
-                'type': 'single_cell',
-                'method': 'scanpy'
+                "name": "PBMC 3K",
+                "description": "Peripheral blood mononuclear cells (3,000 cells)",
+                "size": "~5 MB",
+                "type": "single_cell",
+                "method": "scanpy",
             },
             {
-                'name': 'PBMC 68K',
-                'description': 'Peripheral blood mononuclear cells (68,000 cells)',
-                'size': '~15 MB',
-                'type': 'single_cell',
-                'method': 'scanpy'
-            }
+                "name": "PBMC 68K",
+                "description": "Peripheral blood mononuclear cells (68,000 cells)",
+                "size": "~15 MB",
+                "type": "single_cell",
+                "method": "scanpy",
+            },
         ],
-        'bulk_rnaseq': [
+        "bulk_rnaseq": [
             {
-                'name': 'Sample RNA-seq Dataset (Small)',
-                'description': 'Generated bulk RNA-seq data (50 samples, 500 genes)',
-                'size': '~500 KB',
-                'type': 'bulk_rnaseq',
-                'method': 'generate',
-                'n_samples': 50,
-                'n_features': 500
+                "name": "Sample RNA-seq Dataset (Small)",
+                "description": "Generated bulk RNA-seq data (50 samples, 500 genes)",
+                "size": "~500 KB",
+                "type": "bulk_rnaseq",
+                "method": "generate",
+                "n_samples": 50,
+                "n_features": 500,
             },
             {
-                'name': 'Sample RNA-seq Dataset (Large)',
-                'description': 'Generated bulk RNA-seq data (200 samples, 2000 genes)',
-                'size': '~5 MB',
-                'type': 'bulk_rnaseq',
-                'method': 'generate',
-                'n_samples': 200,
-                'n_features': 2000
+                "name": "Sample RNA-seq Dataset (Large)",
+                "description": "Generated bulk RNA-seq data (200 samples, 2000 genes)",
+                "size": "~5 MB",
+                "type": "bulk_rnaseq",
+                "method": "generate",
+                "n_samples": 200,
+                "n_features": 2000,
+            },
+        ],
+        "multi_omics": [
+            {
+                "name": "Sample Multi-Omics Dataset",
+                "description": "Generated multi-omics data (RNA-seq + proteomics + metabolomics)",
+                "size": "~5 MB",
+                "type": "multi_omics",
+                "method": "generate",
+                "n_samples": 100,
             }
         ],
-        'multi_omics': [
-            {
-                'name': 'Sample Multi-Omics Dataset',
-                'description': 'Generated multi-omics data (RNA-seq + proteomics + metabolomics)',
-                'size': '~5 MB',
-                'type': 'multi_omics',
-                'method': 'generate',
-                'n_samples': 100
-            }
-        ]
     }
+
 
 def run_application(app_name: str, data_path: str, data_type: str) -> bool:
     """Run specific TIER 1 application"""
@@ -407,14 +448,15 @@ def run_application(app_name: str, data_path: str, data_type: str) -> bool:
         print(f"❌ Application failed: {e}")
         return False
 
+
 def run_regenomics(data_path: str, data_type: str) -> bool:
     """Run SCIENTIFICALLY CORRECTED RegenOmics Master Pipeline"""
     print("\n🧬 SCIENTIFICALLY CORRECTED REGENOMICS PIPELINE")
-    print("="*55)
+    print("=" * 55)
     print("✅ Peer-reviewed aging biomarkers")
     print("✅ Age-stratified statistical analysis")
     print("✅ Biologically validated methodology")
-    print("-"*55)
+    print("-" * 55)
 
     try:
         import os
@@ -424,20 +466,23 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
 
         # Ensure reproducibility across all randomized operations
         np.random.seed(42)
-        os.environ['PYTHONHASHSEED'] = '42'
+        os.environ["PYTHONHASHSEED"] = "42"
 
         # Try to import scientifically corrected version first
         try:
             import sys
+
             sys.path.insert(0, str(project_root / "RegenOmicsMaster" / "ml"))
             from biologically_validated_scorer import (
                 BiologicallyValidatedRejuvenationScorer as CorrectedScorer,
             )
+
             scorer_class = CorrectedScorer
             is_corrected = True
             print("🔬 Using BIOLOGICALLY VALIDATED scorer")
         except ImportError:
             from cell_rejuvenation_scoring import CellRejuvenationScorer
+
             scorer_class = CellRejuvenationScorer
             is_corrected = False
             print("⚠️  Using original scorer - please update to corrected version")
@@ -445,17 +490,17 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         print("📊 Loading bulk RNA-seq data with biological validation...")
 
         # Handle different file types
-        if data_path.endswith('.csv'):
+        if data_path.endswith(".csv"):
             data = pd.read_csv(data_path, index_col=0)
-        elif data_path.endswith('.gz') and 'metadata' in data_path:
+        elif data_path.endswith(".gz") and "metadata" in data_path:
             print("ℹ️  Converting GEO metadata to expression data...")
             # For demo purposes, generate expression data based on metadata
             n_samples = 50
             n_genes = 500
             data = pd.DataFrame(
                 np.random.lognormal(0, 1, (n_samples, n_genes)),
-                index=[f'Sample_{i:03d}' for i in range(n_samples)],
-                columns=[f'GENE_{i:04d}' for i in range(n_genes)]
+                index=[f"Sample_{i:03d}" for i in range(n_samples)],
+                columns=[f"GENE_{i:04d}" for i in range(n_genes)],
             )
         else:
             print(f"❌ Unsupported file format: {data_path}")
@@ -464,7 +509,11 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         # Separate expression data from metadata more explicitly
         expr_data = data.select_dtypes(include=[np.number])
         non_expr_cols = [c for c in data.columns if c not in expr_data.columns]
-        existing_metadata = data[non_expr_cols].copy() if non_expr_cols else pd.DataFrame(index=expr_data.index)
+        existing_metadata = (
+            data[non_expr_cols].copy()
+            if non_expr_cols
+            else pd.DataFrame(index=expr_data.index)
+        )
 
         # Create or enhance metadata DataFrame for corrected version
         metadata_df = None
@@ -472,17 +521,22 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
             # Generate synthetic biological metadata
             np.random.seed(42)
             n_samples = len(expr_data)
-            synthetic_metadata = pd.DataFrame({
-                'age': np.random.normal(50, 15, n_samples).clip(18, 90).astype(int),
-                'sex': np.random.choice(['M', 'F'], n_samples),
-                'batch': np.random.choice(['A', 'B', 'C'], n_samples)
-            }, index=expr_data.index)
+            synthetic_metadata = pd.DataFrame(
+                {
+                    "age": np.random.normal(50, 15, n_samples).clip(18, 90).astype(int),
+                    "sex": np.random.choice(["M", "F"], n_samples),
+                    "batch": np.random.choice(["A", "B", "C"], n_samples),
+                },
+                index=expr_data.index,
+            )
 
             # Combine with any existing metadata
             metadata_df = pd.concat([existing_metadata, synthetic_metadata], axis=1)
             print("✅ Generated biological metadata for validation")
         else:
-            metadata_df = existing_metadata if len(existing_metadata.columns) > 0 else None
+            metadata_df = (
+                existing_metadata if len(existing_metadata.columns) > 0 else None
+            )
 
         print(f"✅ Loaded expression data: {expr_data.shape}")
         print(f"📊 Samples: {expr_data.shape[0]}, Genes: {expr_data.shape[1]}")
@@ -517,10 +571,14 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
 
             # Extract scores based on version
             if is_corrected:
-                score_col = 'biological_rejuvenation_score'
-                scores = result_df[score_col].values if score_col in result_df.columns else result_df['rejuvenation_score'].values
+                score_col = "biological_rejuvenation_score"
+                scores = (
+                    result_df[score_col].values
+                    if score_col in result_df.columns
+                    else result_df["rejuvenation_score"].values
+                )
             else:
-                score_col = 'rejuvenation_score'
+                score_col = "rejuvenation_score"
                 scores = result_df[score_col].values
 
         except Exception as e:
@@ -530,12 +588,13 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
 
                 # Import and use original scorer as fallback
                 from cell_rejuvenation_scoring import CellRejuvenationScorer
+
                 fallback_scorer = CellRejuvenationScorer()
 
                 # Use already cleaned expression data
                 result_df = fallback_scorer.score_cells(expr_data)
 
-                score_col = 'rejuvenation_score'
+                score_col = "rejuvenation_score"
                 scores = result_df[score_col].values
                 is_corrected = False  # Mark as using fallback
                 metadata_df = None  # Clear metadata since fallback doesn't use it
@@ -554,23 +613,32 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         # Add scientific calibration metrics
         print("\n🔬 SCIENTIFIC VALIDATION METRICS:")
         norm = _test_normality(scores)
-        print(f"   📊 Normality: method={norm['method']}, p={norm['pvalue']:.3g}, "
-              f"skew={norm['skew']:.3f}, kurtosis={norm['kurtosis']:.3f}")
-        if metadata_df is not None and 'age' in metadata_df.columns:
-            age_correlation = np.corrcoef(scores, metadata_df['age'].values)[0, 1]
+        print(
+            f"   📊 Normality: method={norm['method']}, p={norm['pvalue']:.3g}, "
+            f"skew={norm['skew']:.3f}, kurtosis={norm['kurtosis']:.3f}"
+        )
+        if metadata_df is not None and "age" in metadata_df.columns:
+            age_correlation = np.corrcoef(scores, metadata_df["age"].values)[0, 1]
             print(f"   🧬 Age correlation: {age_correlation:.3f}")
 
             # Age-stratified analysis
-            young_mask = metadata_df['age'] < 50
-            old_mask = metadata_df['age'] >= 50
+            young_mask = metadata_df["age"] < 50
+            old_mask = metadata_df["age"] >= 50
             if young_mask.sum() > 0 and old_mask.sum() > 0:
                 young_scores = scores[young_mask]
                 old_scores = scores[old_mask]
-                print(f"   👶 Young samples (n={young_mask.sum()}): {np.mean(young_scores):.3f} ± {np.std(young_scores):.3f}")
-                print(f"   👴 Old samples (n={old_mask.sum()}): {np.mean(old_scores):.3f} ± {np.std(old_scores):.3f}")
+                print(
+                    f"   👶 Young samples (n={young_mask.sum()}): {np.mean(young_scores):.3f} ± {np.std(young_scores):.3f}"
+                )
+                print(
+                    f"   👴 Old samples (n={old_mask.sum()}): {np.mean(old_scores):.3f} ± {np.std(old_scores):.3f}"
+                )
 
         # Confidence intervals if available
-        if hasattr(scorer, 'confidence_intervals_') and scorer.confidence_intervals_ is not None:
+        if (
+            hasattr(scorer, "confidence_intervals_")
+            and scorer.confidence_intervals_ is not None
+        ):
             print("   📊 95% confidence intervals computed: ✅")
         else:
             print("   📊 Confidence intervals: Not available")
@@ -580,44 +648,54 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
             print("\n🔬 BIOLOGICAL VALIDATION RESULTS:")
 
             # Age-adjusted results if available
-            if 'age_adjusted_score' in result_df.columns:
-                age_scores = result_df['age_adjusted_score'].values
+            if "age_adjusted_score" in result_df.columns:
+                age_scores = result_df["age_adjusted_score"].values
                 print(f"📈 Mean age-adjusted score: {np.mean(age_scores):.3f}")
-                print(f"📊 Age-adjustment correlation: {np.corrcoef(scores, age_scores)[0,1]:.3f}")
+                print(
+                    f"📊 Age-adjustment correlation: {np.corrcoef(scores, age_scores)[0, 1]:.3f}"
+                )
 
             # Biological categories if available
-            if 'biological_category' in result_df.columns:
+            if "biological_category" in result_df.columns:
                 print("\n🏷️  Biological rejuvenation categories:")
-                bio_counts = result_df['biological_category'].value_counts()
+                bio_counts = result_df["biological_category"].value_counts()
                 for category, count in bio_counts.items():
-                    print(f"   {category}: {count} samples ({100*count/len(result_df):.1f}%)")
+                    print(
+                        f"   {category}: {count} samples ({100 * count / len(result_df):.1f}%)"
+                    )
 
         # Show standard rejuvenation categories
-        if 'rejuvenation_category' in result_df.columns:
+        if "rejuvenation_category" in result_df.columns:
             print("\n🏷️  Rejuvenation categories:")
-            category_counts = result_df['rejuvenation_category'].value_counts()
+            category_counts = result_df["rejuvenation_category"].value_counts()
             for category, count in category_counts.items():
                 print(f"   {category}: {count} samples")
 
         # Show top rejuvenated samples
         print("\n🏆 Top 5 rejuvenated samples:")
-        if score_col in result_df.columns and np.issubdtype(result_df[score_col].dtype, np.number):
+        if score_col in result_df.columns and np.issubdtype(
+            result_df[score_col].dtype, np.number
+        ):
             top_samples = result_df.dropna(subset=[score_col]).nlargest(5, score_col)
             display_cols = [score_col]
-            if 'rejuvenation_category' in result_df.columns:
-                display_cols.append('rejuvenation_category')
-            if is_corrected and 'age_adjusted_score' in result_df.columns:
-                display_cols.append('age_adjusted_score')
+            if "rejuvenation_category" in result_df.columns:
+                display_cols.append("rejuvenation_category")
+            if is_corrected and "age_adjusted_score" in result_df.columns:
+                display_cols.append("age_adjusted_score")
 
             for idx, row in top_samples[display_cols].iterrows():
                 score_str = f"{row[score_col]:.3f}"
                 if len(display_cols) > 1:
-                    extra_info = " | ".join([f"{col}: {row[col]}" for col in display_cols[1:]])
+                    extra_info = " | ".join(
+                        [f"{col}: {row[col]}" for col in display_cols[1:]]
+                    )
                     print(f"   {idx}: {score_str} | {extra_info}")
                 else:
                     print(f"   {idx}: {score_str}")
         else:
-            print("⚠️  Cannot compute top samples (score column missing or non-numeric).")
+            print(
+                "⚠️  Cannot compute top samples (score column missing or non-numeric)."
+            )
 
         # Generate enhanced scientific report
         report_name = "RegenOmics (Corrected)" if is_corrected else "RegenOmics"
@@ -633,27 +711,32 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         payload = {
             "results": combined_results,
             "expression_data": expr_data,
-            "sample_metadata": metadata_df
+            "sample_metadata": metadata_df,
         }
         report_metadata = {
-            'dataset_name': data_path.split('/')[-1] if isinstance(data_path, str) else "Generated Dataset",
-            'bootstrap_samples': 100,
-            'cv_r2_mean': 'N/A',
-            'cv_r2_std': 'N/A',
-            'input_file': str(data_path) if data_path else 'N/A',
-            'processing_time': 'N/A',
-            'memory_usage': 'N/A',
-            'biological_validation': is_corrected,
-            'age_stratified': is_corrected,
-            'peer_reviewed_markers': is_corrected,
-            'n_samples': len(result_df),
-            'n_genes': expr_data.shape[1],
-            'corrected': is_corrected,
-            'has_metadata': metadata_df is not None,
-            'metadata_columns': list(metadata_df.columns) if metadata_df is not None else [],
-            'score_mean': float(np.mean(scores)),
-            'score_std': float(np.std(scores)),
-            'has_confidence_intervals': hasattr(scorer, 'confidence_intervals_') and scorer.confidence_intervals_ is not None
+            "dataset_name": data_path.split("/")[-1]
+            if isinstance(data_path, str)
+            else "Generated Dataset",
+            "bootstrap_samples": 100,
+            "cv_r2_mean": "N/A",
+            "cv_r2_std": "N/A",
+            "input_file": str(data_path) if data_path else "N/A",
+            "processing_time": "N/A",
+            "memory_usage": "N/A",
+            "biological_validation": is_corrected,
+            "age_stratified": is_corrected,
+            "peer_reviewed_markers": is_corrected,
+            "n_samples": len(result_df),
+            "n_genes": expr_data.shape[1],
+            "corrected": is_corrected,
+            "has_metadata": metadata_df is not None,
+            "metadata_columns": list(metadata_df.columns)
+            if metadata_df is not None
+            else [],
+            "score_mean": float(np.mean(scores)),
+            "score_std": float(np.std(scores)),
+            "has_confidence_intervals": hasattr(scorer, "confidence_intervals_")
+            and scorer.confidence_intervals_ is not None,
         }
 
         report_path = _emit_report(report_name, payload, report_metadata)
@@ -668,7 +751,9 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
                 print("   ✅ Biological pathway interpretation")
                 print("   ✅ Scientific methodology documentation")
             else:
-                print("🔬 Report includes: statistical analysis, biological interpretation, methodology")
+                print(
+                    "🔬 Report includes: statistical analysis, biological interpretation, methodology"
+                )
 
         # Final validation summary
         if is_corrected:
@@ -685,14 +770,15 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         print(f"❌ RegenOmics failed: {e}")
         return False
 
+
 def run_single_cell_atlas(data_path: str, data_type: str) -> bool:
     """Run SCIENTIFICALLY CORRECTED Single-Cell Rejuvenation Atlas"""
     print("\n🔬 SCIENTIFICALLY CORRECTED SINGLE-CELL ATLAS")
-    print("="*55)
+    print("=" * 55)
     print("✅ Validated aging trajectory inference")
     print("✅ Cell type-specific senescence markers")
     print("✅ Pseudotime-based aging analysis")
-    print("-"*55)
+    print("-" * 55)
 
     try:
         import anndata as ad
@@ -700,22 +786,27 @@ def run_single_cell_atlas(data_path: str, data_type: str) -> bool:
         # Try to import scientifically corrected version first
         try:
             import sys
-            sys.path.insert(0, str(project_root / "SingleCellRejuvenationAtlas" / "python"))
+
+            sys.path.insert(
+                0, str(project_root / "SingleCellRejuvenationAtlas" / "python")
+            )
             from biologically_validated_analyzer import (
                 BiologicallyValidatedRejuvenationAnalyzer as CorrectedAnalyzer,
             )
+
             analyzer_class = CorrectedAnalyzer
             is_corrected = True
             print("🔬 Using BIOLOGICALLY VALIDATED analyzer")
         except ImportError:
             from rejuvenation_analyzer import RejuvenationAnalyzer
+
             analyzer_class = RejuvenationAnalyzer
             is_corrected = False
             print("⚠️  Using original analyzer - please update to corrected version")
 
         print("🔬 Loading single-cell data with biological validation...")
 
-        if data_path.endswith('.h5ad'):
+        if data_path.endswith(".h5ad"):
             adata = ad.read_h5ad(data_path)
         else:
             print("❌ Single-Cell Atlas requires H5AD format data")
@@ -743,8 +834,8 @@ def run_single_cell_atlas(data_path: str, data_type: str) -> bool:
         print(f"🔬 Analyzed {adata.n_obs} cells")
 
         # Check if clustering was successful
-        if 'leiden' in adata.obs.columns:
-            n_clusters = len(adata.obs['leiden'].unique())
+        if "leiden" in adata.obs.columns:
+            n_clusters = len(adata.obs["leiden"].unique())
             print(f"🧬 Found {n_clusters} clusters")
 
             if n_clusters > 1:
@@ -761,7 +852,9 @@ def run_single_cell_atlas(data_path: str, data_type: str) -> bool:
         analysis_results = _extract_single_cell_metrics(adata, results)
 
         # Save processed data for report reference
-        reports_dir = Path("reports") / f"run_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}"
+        reports_dir = (
+            Path("reports") / f"run_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}"
+        )
         reports_dir.mkdir(parents=True, exist_ok=True)
         final_data_path = reports_dir / "atlas_final.h5ad"
         adata.write(final_data_path)
@@ -769,22 +862,26 @@ def run_single_cell_atlas(data_path: str, data_type: str) -> bool:
         payload = {
             "adata_path": str(final_data_path),
             "original_path": str(data_path),
-            "summary": analysis_results
+            "summary": analysis_results,
         }
         report_metadata = {
             "n_cells": int(adata.n_obs),
             "n_genes": int(adata.n_vars),
             "corrected": is_corrected,
             "available_annotations": list(adata.obs.columns),
-            "processed_data_path": str(final_data_path)
+            "processed_data_path": str(final_data_path),
         }
 
-        report_path = _emit_report("Single-Cell Rejuvenation Atlas", payload, report_metadata)
+        report_path = _emit_report(
+            "Single-Cell Rejuvenation Atlas", payload, report_metadata
+        )
 
         if report_path:
             print(f"📄 Scientific report saved: {report_path}")
             print(f"✅ Processed data saved: {final_data_path}")
-            print("🔬 Report includes: trajectory analysis, clustering validation, biological interpretation")
+            print(
+                "🔬 Report includes: trajectory analysis, clustering validation, biological interpretation"
+            )
 
         return True
 
@@ -792,14 +889,15 @@ def run_single_cell_atlas(data_path: str, data_type: str) -> bool:
         print(f"❌ Single-Cell Atlas failed: {e}")
         return False
 
+
 def run_multi_omics(data_path: str, data_type: str) -> bool:
     """Run SCIENTIFICALLY CORRECTED Multi-Omics Fusion Intelligence"""
     print("\n🧠 SCIENTIFICALLY CORRECTED MULTI-OMICS INTEGRATION")
-    print("="*60)
+    print("=" * 60)
     print("✅ Pathway-informed autoencoder architecture")
     print("✅ Age-stratified multi-omics analysis")
     print("✅ Biological regularization constraints")
-    print("-"*60)
+    print("-" * 60)
 
     try:
         import os
@@ -809,11 +907,12 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
 
         # Ensure reproducibility for autoencoder initialization and training
         np.random.seed(42)
-        os.environ['PYTHONHASHSEED'] = '42'
+        os.environ["PYTHONHASHSEED"] = "42"
 
         # Set PyTorch seed if available
         try:
             import torch
+
             torch.manual_seed(42)
             if torch.cuda.is_available():
                 torch.cuda.manual_seed(42)
@@ -824,15 +923,20 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
         # Try to import scientifically corrected version first
         try:
             import sys
-            sys.path.insert(0, str(project_root / "MultiOmicsFusionIntelligence" / "integration"))
+
+            sys.path.insert(
+                0, str(project_root / "MultiOmicsFusionIntelligence" / "integration")
+            )
             from biologically_validated_integrator import (
                 BiologicallyValidatedMultiOmicsIntegrator as CorrectedIntegrator,
             )
+
             integrator_class = CorrectedIntegrator
             is_corrected = True
             print("🔬 Using BIOLOGICALLY VALIDATED integrator")
         except ImportError:
             from multi_omics_integrator import MultiOmicsIntegrator
+
             integrator_class = MultiOmicsIntegrator
             is_corrected = False
             print("⚠️  Using original integrator - please update to corrected version")
@@ -842,8 +946,8 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
         data_dir = Path(data_path).parent
 
         # Load different omics datasets
-        rnaseq_file = data_dir / 'rnaseq.csv'
-        proteomics_file = data_dir / 'proteomics.csv'
+        rnaseq_file = data_dir / "rnaseq.csv"
+        proteomics_file = data_dir / "proteomics.csv"
 
         if not (rnaseq_file.exists() and proteomics_file.exists()):
             print("❌ Multi-Omics requires rnaseq.csv and proteomics.csv files")
@@ -856,7 +960,7 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
         print(f"✅ Proteomics data: {proteomics.shape}")
 
         # Check for metabolomics data
-        metabolomics_file = data_dir / 'metabolomics.csv'
+        metabolomics_file = data_dir / "metabolomics.csv"
         has_metabolomics = metabolomics_file.exists()
         metabolomics = None
 
@@ -864,7 +968,9 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
             metabolomics = pd.read_csv(metabolomics_file, index_col=0)
             print(f"✅ Metabolomics data: {metabolomics.shape}")
         else:
-            print("ℹ️  Metabolomics data not available - proceeding with RNA-seq + Proteomics")
+            print(
+                "ℹ️  Metabolomics data not available - proceeding with RNA-seq + Proteomics"
+            )
 
         # Verify sample alignment across modalities
         common_samples = rnaseq.index.intersection(proteomics.index)
@@ -874,47 +980,55 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
         print(f"✅ Common samples across modalities: {len(common_samples)}")
 
         if len(common_samples) == 0:
-            print("❌ No overlapping samples across modalities. Please align sample IDs.")
+            print(
+                "❌ No overlapping samples across modalities. Please align sample IDs."
+            )
             return False
 
         # Align all data to common samples
         rnaseq_aligned = rnaseq.loc[common_samples]
         proteomics_aligned = proteomics.loc[common_samples]
-        metabolomics_aligned = metabolomics.loc[common_samples] if has_metabolomics else None
+        metabolomics_aligned = (
+            metabolomics.loc[common_samples] if has_metabolomics else None
+        )
 
         # Prepare metadata for corrected version
         if is_corrected:
             # Add synthetic biological metadata
             np.random.seed(42)
-            sample_metadata = pd.DataFrame({
-                'age': np.random.normal(50, 15, len(common_samples)).clip(18, 90).astype(int),
-                'sex': np.random.choice(['M', 'F'], len(common_samples)),
-                'batch': np.random.choice(['A', 'B'], len(common_samples))
-            }, index=common_samples)
+            sample_metadata = pd.DataFrame(
+                {
+                    "age": np.random.normal(50, 15, len(common_samples))
+                    .clip(18, 90)
+                    .astype(int),
+                    "sex": np.random.choice(["M", "F"], len(common_samples)),
+                    "batch": np.random.choice(["A", "B"], len(common_samples)),
+                },
+                index=common_samples,
+            )
 
             omics_data = {
-                'rnaseq': rnaseq_aligned,  # Pass DataFrames to preserve indices
-                'proteomics': proteomics_aligned,
-                'metadata': sample_metadata
+                "rnaseq": rnaseq_aligned,  # Pass DataFrames to preserve indices
+                "proteomics": proteomics_aligned,
+                "metadata": sample_metadata,
             }
             if has_metabolomics:
-                omics_data['metabolomics'] = metabolomics_aligned
+                omics_data["metabolomics"] = metabolomics_aligned
 
             print("✅ Added biological metadata for pathway validation")
         else:
-            omics_data = {
-                'rnaseq': rnaseq_aligned,
-                'proteomics': proteomics_aligned
-            }
+            omics_data = {"rnaseq": rnaseq_aligned, "proteomics": proteomics_aligned}
             if has_metabolomics:
-                omics_data['metabolomics'] = metabolomics_aligned
+                omics_data["metabolomics"] = metabolomics_aligned
 
         # Initialize integrator with biological constraints
         if is_corrected:
             print("🤖 Training pathway-informed autoencoder...")
             print("   📚 Using biological pathway constraints")
             print("   🧬 Applying age-stratified integration")
-            integrator = integrator_class(latent_dim=20, use_pathway_regularization=True)
+            integrator = integrator_class(
+                latent_dim=20, use_pathway_regularization=True
+            )
         else:
             print("🤖 Training autoencoder...")
             integrator = integrator_class(latent_dim=20)
@@ -934,6 +1048,7 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
         # Handle PyTorch tensor conversion if needed
         try:
             import torch
+
             if isinstance(features, torch.Tensor):
                 features = features.detach().cpu().numpy()
         except Exception:
@@ -943,58 +1058,71 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
         features_df = pd.DataFrame(
             features,
             index=common_samples,
-            columns=[f'Latent_{i:02d}' for i in range(features.shape[1])]
+            columns=[f"Latent_{i:02d}" for i in range(features.shape[1])],
         )
 
         # Standardized payload and metadata
         payload = {
             "features": features_df,
             "original_data": {
-                'rnaseq': rnaseq_aligned,
-                'proteomics': proteomics_aligned,
-                'metabolomics': metabolomics_aligned if has_metabolomics else None
-            }
+                "rnaseq": rnaseq_aligned,
+                "proteomics": proteomics_aligned,
+                "metabolomics": metabolomics_aligned if has_metabolomics else None,
+            },
         }
         report_metadata = {
-            'n_omics': 3 if has_metabolomics else 2,
-            'modalities': ['RNA-seq', 'Proteomics', 'Metabolomics'] if has_metabolomics else ['RNA-seq', 'Proteomics'],
-            'original_features': rnaseq_aligned.shape[1] + proteomics_aligned.shape[1] + (metabolomics_aligned.shape[1] if has_metabolomics else 0),
-            'total_input_features': rnaseq_aligned.shape[1] + proteomics_aligned.shape[1] + (metabolomics_aligned.shape[1] if has_metabolomics else 0),
-            'rnaseq_features': rnaseq_aligned.shape[1],
-            'proteomics_features': proteomics_aligned.shape[1],
-            'metabolomics_features': metabolomics_aligned.shape[1] if has_metabolomics else 'N/A',
-            'n_epochs': 100,
-            'learning_rate': 0.001,
-            'batch_size': 32,
-            'initial_loss': 'N/A',
-            'final_loss': 'N/A',
-            'converged': True,
-            'reconstruction_r2': 'N/A',
-            'explained_variance': 'N/A',
-            'cross_modal_correlation': 'N/A',
-            'cv_loss_mean': 'N/A',
-            'cv_loss_std': 'N/A',
-            'model_stability': 'N/A',
-            'hidden_1': 512,
-            'hidden_2': 256,
-            'corrected': is_corrected,
-            'n_samples': features.shape[0],
-            'latent_dimensions': features.shape[1],
-            'sample_alignment_verified': True,
-            'common_samples': len(common_samples)
+            "n_omics": 3 if has_metabolomics else 2,
+            "modalities": ["RNA-seq", "Proteomics", "Metabolomics"]
+            if has_metabolomics
+            else ["RNA-seq", "Proteomics"],
+            "original_features": rnaseq_aligned.shape[1]
+            + proteomics_aligned.shape[1]
+            + (metabolomics_aligned.shape[1] if has_metabolomics else 0),
+            "total_input_features": rnaseq_aligned.shape[1]
+            + proteomics_aligned.shape[1]
+            + (metabolomics_aligned.shape[1] if has_metabolomics else 0),
+            "rnaseq_features": rnaseq_aligned.shape[1],
+            "proteomics_features": proteomics_aligned.shape[1],
+            "metabolomics_features": metabolomics_aligned.shape[1]
+            if has_metabolomics
+            else "N/A",
+            "n_epochs": 100,
+            "learning_rate": 0.001,
+            "batch_size": 32,
+            "initial_loss": "N/A",
+            "final_loss": "N/A",
+            "converged": True,
+            "reconstruction_r2": "N/A",
+            "explained_variance": "N/A",
+            "cross_modal_correlation": "N/A",
+            "cv_loss_mean": "N/A",
+            "cv_loss_std": "N/A",
+            "model_stability": "N/A",
+            "hidden_1": 512,
+            "hidden_2": 256,
+            "corrected": is_corrected,
+            "n_samples": features.shape[0],
+            "latent_dimensions": features.shape[1],
+            "sample_alignment_verified": True,
+            "common_samples": len(common_samples),
         }
 
-        report_path = _emit_report("Multi-Omics Fusion Intelligence", payload, report_metadata)
+        report_path = _emit_report(
+            "Multi-Omics Fusion Intelligence", payload, report_metadata
+        )
 
         if report_path:
             print(f"📄 Scientific report saved: {report_path}")
-            print("🔬 Report includes: integration methodology, systems biology insights, clinical applications")
+            print(
+                "🔬 Report includes: integration methodology, systems biology insights, clinical applications"
+            )
 
         return True
 
     except Exception as e:
         print(f"❌ Multi-Omics failed: {e}")
         return False
+
 
 def generate_demo_data() -> str:
     """Generate demo data for all applications with full reproducibility"""
@@ -1012,16 +1140,16 @@ def generate_demo_data() -> str:
 
         # Ensure full reproducibility
         np.random.seed(42)
-        os.environ['PYTHONHASHSEED'] = '42'
+        os.environ["PYTHONHASHSEED"] = "42"
 
         # 1. Bulk RNA-seq data
         print("📊 Creating bulk RNA-seq data...")
         bulk_data = pd.DataFrame(
             np.random.lognormal(0, 1, (50, 500)),
-            index=[f'Sample_{i:03d}' for i in range(50)],
-            columns=[f'GENE_{i:04d}' for i in range(500)]
+            index=[f"Sample_{i:03d}" for i in range(50)],
+            columns=[f"GENE_{i:04d}" for i in range(500)],
         )
-        bulk_data.to_csv(demo_dir / 'bulk_rnaseq.csv')
+        bulk_data.to_csv(demo_dir / "bulk_rnaseq.csv")
 
         # 2. Single-cell data
         print("🔬 Creating single-cell data...")
@@ -1029,45 +1157,51 @@ def generate_demo_data() -> str:
         sc_data = np.random.lognormal(0, 1, (n_cells, n_genes))
 
         adata = ad.AnnData(sc_data)
-        adata.var_names = [f'GENE_{i:04d}' for i in range(n_genes)]
-        adata.obs_names = [f'CELL_{i:04d}' for i in range(n_cells)]
-        adata.obs['age_group'] = np.random.choice(['young', 'old'], n_cells, p=[0.6, 0.4])
-        adata.obs['treatment'] = np.random.choice(['control', 'intervention'], n_cells, p=[0.7, 0.3])
+        adata.var_names = [f"GENE_{i:04d}" for i in range(n_genes)]
+        adata.obs_names = [f"CELL_{i:04d}" for i in range(n_cells)]
+        adata.obs["age_group"] = np.random.choice(
+            ["young", "old"], n_cells, p=[0.6, 0.4]
+        )
+        adata.obs["treatment"] = np.random.choice(
+            ["control", "intervention"], n_cells, p=[0.7, 0.3]
+        )
 
-        adata.write(demo_dir / 'single_cell.h5ad')
+        adata.write(demo_dir / "single_cell.h5ad")
 
         # 3. Multi-omics data
         print("🧠 Creating multi-omics data...")
         n_samples = 50
 
-        metadata = pd.DataFrame({
-            'sample_id': [f'Sample_{i:03d}' for i in range(n_samples)],
-            'age': np.random.randint(20, 80, n_samples),
-            'condition': np.random.choice(['young', 'old'], n_samples)
-        })
+        metadata = pd.DataFrame(
+            {
+                "sample_id": [f"Sample_{i:03d}" for i in range(n_samples)],
+                "age": np.random.randint(20, 80, n_samples),
+                "condition": np.random.choice(["young", "old"], n_samples),
+            }
+        )
 
         rnaseq = pd.DataFrame(
             np.random.lognormal(0, 1, (n_samples, 500)),
-            index=metadata['sample_id'],
-            columns=[f'GENE_{i:04d}' for i in range(500)]
+            index=metadata["sample_id"],
+            columns=[f"GENE_{i:04d}" for i in range(500)],
         )
 
         proteomics = pd.DataFrame(
             np.random.normal(0, 1, (n_samples, 300)),
-            index=metadata['sample_id'],
-            columns=[f'PROT_{i:04d}' for i in range(300)]
+            index=metadata["sample_id"],
+            columns=[f"PROT_{i:04d}" for i in range(300)],
         )
 
         metabolomics = pd.DataFrame(
             np.random.lognormal(0, 0.5, (n_samples, 150)),
-            index=metadata['sample_id'],
-            columns=[f'METAB_{i:03d}' for i in range(150)]
+            index=metadata["sample_id"],
+            columns=[f"METAB_{i:03d}" for i in range(150)],
         )
 
-        metadata.to_csv(demo_dir / 'metadata.csv', index=False)
-        rnaseq.to_csv(demo_dir / 'rnaseq.csv')
-        proteomics.to_csv(demo_dir / 'proteomics.csv')
-        metabolomics.to_csv(demo_dir / 'metabolomics.csv')
+        metadata.to_csv(demo_dir / "metadata.csv", index=False)
+        rnaseq.to_csv(demo_dir / "rnaseq.csv")
+        proteomics.to_csv(demo_dir / "proteomics.csv")
+        metabolomics.to_csv(demo_dir / "metabolomics.csv")
 
         print("✅ Demo data generated successfully!")
         return str(demo_dir)
@@ -1076,18 +1210,20 @@ def generate_demo_data() -> str:
         print(f"❌ Demo data generation failed: {e}")
         return None
 
+
 def _print_banner():
     """Print application banner"""
-    print("="*80)
+    print("=" * 80)
     print("🧬 TIER 1 CELL REJUVENATION SUITE 🧬")
-    print("="*80)
+    print("=" * 80)
     print("• 110+ peer-reviewed aging biomarkers integrated")
     print("• Ensemble ML models with cross-validation")
     print("• 12 biological pathway categories")
     print("• Scientific reporting system")
     print("• Age-stratified statistical analysis")
     print("• Interactive analysis interface")
-    print("="*80)
+    print("=" * 80)
+
 
 def main():
     """Main interactive application"""
@@ -1101,7 +1237,7 @@ def main():
         main_options = [
             "Work with generated demo data",
             "Work with real-world datasets",
-            "View application information"
+            "View application information",
         ]
 
         choice = print_menu("Select Data Source", main_options)
@@ -1125,13 +1261,14 @@ def main():
 
         input("\n⏸️  Press Enter to continue...")
 
+
 def run_demo_workflow(demo_dir: str):
     """Run workflow with demo data"""
     app_options = [
         "RegenOmics Master Pipeline (Bulk RNA-seq)",
         "Single-Cell Rejuvenation Atlas",
         "Multi-Omics Fusion Intelligence",
-        "Run All Applications"
+        "Run All Applications",
     ]
 
     choice = print_menu("Select Application", app_options)
@@ -1139,17 +1276,30 @@ def run_demo_workflow(demo_dir: str):
     if choice == 0:
         return
     elif choice == 1:
-        run_application("RegenOmics Master Pipeline", f"{demo_dir}/bulk_rnaseq.csv", "demo")
+        run_application(
+            "RegenOmics Master Pipeline", f"{demo_dir}/bulk_rnaseq.csv", "demo"
+        )
     elif choice == 2:
-        run_application("Single-Cell Rejuvenation Atlas", f"{demo_dir}/single_cell.h5ad", "demo")
+        run_application(
+            "Single-Cell Rejuvenation Atlas", f"{demo_dir}/single_cell.h5ad", "demo"
+        )
     elif choice == 3:
-        run_application("Multi-Omics Fusion Intelligence", f"{demo_dir}/metadata.csv", "demo")
+        run_application(
+            "Multi-Omics Fusion Intelligence", f"{demo_dir}/metadata.csv", "demo"
+        )
     elif choice == 4:
         # Run all applications
         print("\n🚀 Running all TIER 1 applications...")
-        run_application("RegenOmics Master Pipeline", f"{demo_dir}/bulk_rnaseq.csv", "demo")
-        run_application("Single-Cell Rejuvenation Atlas", f"{demo_dir}/single_cell.h5ad", "demo")
-        run_application("Multi-Omics Fusion Intelligence", f"{demo_dir}/metadata.csv", "demo")
+        run_application(
+            "RegenOmics Master Pipeline", f"{demo_dir}/bulk_rnaseq.csv", "demo"
+        )
+        run_application(
+            "Single-Cell Rejuvenation Atlas", f"{demo_dir}/single_cell.h5ad", "demo"
+        )
+        run_application(
+            "Multi-Omics Fusion Intelligence", f"{demo_dir}/metadata.csv", "demo"
+        )
+
 
 def run_real_data_workflow():
     """Run workflow with real datasets"""
@@ -1159,7 +1309,7 @@ def run_real_data_workflow():
     category_options = [
         "Single-Cell Datasets",
         "Bulk RNA-seq Datasets",
-        "Multi-Omics Datasets"
+        "Multi-Omics Datasets",
     ]
 
     choice = print_menu("Select Dataset Category", category_options)
@@ -1167,13 +1317,17 @@ def run_real_data_workflow():
     if choice == 0:
         return
 
-    category_map = {1: 'single_cell', 2: 'bulk_rnaseq', 3: 'multi_omics'}
+    category_map = {1: "single_cell", 2: "bulk_rnaseq", 3: "multi_omics"}
     selected_category = category_map[choice]
 
     # Select specific dataset
-    dataset_options = [f"{d['name']} - {d['description']}" for d in datasets[selected_category]]
+    dataset_options = [
+        f"{d['name']} - {d['description']}" for d in datasets[selected_category]
+    ]
 
-    choice = print_menu(f"Select {selected_category.replace('_', ' ').title()} Dataset", dataset_options)
+    choice = print_menu(
+        f"Select {selected_category.replace('_', ' ').title()} Dataset", dataset_options
+    )
 
     if choice == 0:
         return
@@ -1185,12 +1339,13 @@ def run_real_data_workflow():
 
     if data_path:
         # Select application
-        if selected_category == 'single_cell':
+        if selected_category == "single_cell":
             run_application("Single-Cell Rejuvenation Atlas", data_path, "real")
-        elif selected_category == 'bulk_rnaseq':
+        elif selected_category == "bulk_rnaseq":
             run_application("RegenOmics Master Pipeline", data_path, "real")
-        elif selected_category == 'multi_omics':
+        elif selected_category == "multi_omics":
             run_application("Multi-Omics Fusion Intelligence", data_path, "real")
+
 
 def show_application_info():
     """Show information about the applications"""
@@ -1238,11 +1393,17 @@ def show_application_info():
     print("   • Scientific Reporting: Matplotlib, Seaborn, SciPy statistics")
     print()
 
+
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="TIER 1 Core Impact Applications Suite")
-    parser.add_argument("--mode", choices=["demo","real"], help="Run without menu")
-    parser.add_argument("--app", choices=["bulk","sc","multi"], help="Application to run")
+
+    parser = argparse.ArgumentParser(
+        description="TIER 1 Core Impact Applications Suite"
+    )
+    parser.add_argument("--mode", choices=["demo", "real"], help="Run without menu")
+    parser.add_argument(
+        "--app", choices=["bulk", "sc", "multi"], help="Application to run"
+    )
     parser.add_argument("--path", help="Input path (csv/h5ad/metadata.csv)")
     args = parser.parse_args()
 
@@ -1252,11 +1413,21 @@ if __name__ == "__main__":
             demo = generate_demo_data()
             if demo:
                 if args.app == "bulk":
-                    run_application("RegenOmics Master Pipeline", f"{demo}/bulk_rnaseq.csv", "demo")
+                    run_application(
+                        "RegenOmics Master Pipeline", f"{demo}/bulk_rnaseq.csv", "demo"
+                    )
                 elif args.app == "sc":
-                    run_application("Single-Cell Rejuvenation Atlas", f"{demo}/single_cell.h5ad", "demo")
+                    run_application(
+                        "Single-Cell Rejuvenation Atlas",
+                        f"{demo}/single_cell.h5ad",
+                        "demo",
+                    )
                 elif args.app == "multi":
-                    run_application("Multi-Omics Fusion Intelligence", f"{demo}/metadata.csv", "demo")
+                    run_application(
+                        "Multi-Omics Fusion Intelligence",
+                        f"{demo}/metadata.csv",
+                        "demo",
+                    )
                 else:
                     print("❌ --app required for --mode demo")
             else:
@@ -1269,7 +1440,7 @@ if __name__ == "__main__":
             app_map = {
                 "bulk": "RegenOmics Master Pipeline",
                 "sc": "Single-Cell Rejuvenation Atlas",
-                "multi": "Multi-Omics Fusion Intelligence"
+                "multi": "Multi-Omics Fusion Intelligence",
             }
             run_application(app_map[args.app], args.path, "real")
     else:

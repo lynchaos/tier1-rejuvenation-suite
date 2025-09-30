@@ -7,13 +7,13 @@ Command-line interface for bulk RNA-seq and other omics data analysis.
 Provides ML model fitting, prediction, and biomarker validation.
 """
 
+import sys
+from pathlib import Path
+from typing import List, Optional
+
+import pandas as pd
 import typer
 from rich.console import Console
-from rich.progress import track
-from typing import Optional, List
-from pathlib import Path
-import pandas as pd
-import sys
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
@@ -52,7 +52,7 @@ def fit(
     Trains ensemble ML models with comprehensive biomarker validation
     and cross-validation for robust rejuvenation scoring.
     """
-    console.print(f"🔬 [bold blue]Starting bulk data model fitting...[/bold blue]")
+    console.print("🔬 [bold blue]Starting bulk data model fitting...[/bold blue]")
 
     try:
         # Import the bulk analyzer
@@ -78,7 +78,7 @@ def fit(
             models=models or ["rf", "xgb", "lgb"],
         )
 
-        console.print(f"✅ [green]Models trained successfully![/green]")
+        console.print("✅ [green]Models trained successfully![/green]")
         console.print(f"📊 Model performance: {results['cv_scores']}")
         console.print(f"💾 Models saved to: [cyan]{output_dir}[/cyan]")
 
@@ -109,7 +109,7 @@ def predict(
     Generates rejuvenation scores with ensemble predictions,
     confidence intervals, and biomarker-level analysis.
     """
-    console.print(f"🔮 [bold blue]Starting bulk data prediction...[/bold blue]")
+    console.print("🔮 [bold blue]Starting bulk data prediction...[/bold blue]")
 
     try:
         from tier1_suite.bulk import BulkAnalyzer
@@ -136,7 +136,7 @@ def predict(
         console.print(f"💾 Saving predictions to: [cyan]{output_file}[/cyan]")
         predictions.to_csv(output_file, index=False)
 
-        console.print(f"✅ [green]Predictions generated successfully![/green]")
+        console.print("✅ [green]Predictions generated successfully![/green]")
         console.print(f"📊 Predicted {len(predictions)} samples")
 
     except Exception as e:
@@ -163,7 +163,7 @@ def validate(
     Performs comprehensive validation using biological pathways,
     known aging signatures, and statistical tests.
     """
-    console.print(f"✅ [bold blue]Starting prediction validation...[/bold blue]")
+    console.print("✅ [bold blue]Starting prediction validation...[/bold blue]")
 
     try:
         from tier1_suite.bulk import BulkAnalyzer
@@ -183,7 +183,7 @@ def validate(
             generate_report=generate_report,
         )
 
-        console.print(f"✅ [green]Validation completed![/green]")
+        console.print("✅ [green]Validation completed![/green]")
         console.print(f"📊 Validation metrics: {validation_results['summary']}")
 
     except Exception as e:

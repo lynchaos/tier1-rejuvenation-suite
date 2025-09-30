@@ -7,12 +7,12 @@ Command-line interface for multi-omics data integration,
 fusion analysis, and comprehensive evaluation.
 """
 
+import sys
+from pathlib import Path
+from typing import List, Optional
+
 import typer
 from rich.console import Console
-from rich.progress import track
-from typing import Optional, List
-from pathlib import Path
-import sys
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
@@ -52,7 +52,7 @@ def fit(
     with biological pathway guidance and batch correction.
     """
     console.print(
-        f"🔬 [bold blue]Starting multi-omics integration fitting...[/bold blue]"
+        "🔬 [bold blue]Starting multi-omics integration fitting...[/bold blue]"
     )
 
     try:
@@ -68,11 +68,11 @@ def fit(
 
         # Load and integrate data
         console.print(f"📂 Loading {len(data_files)} omics datasets...")
-        integration_results = analyzer.fit_integration(
+        analyzer.fit_integration(
             data_files=data_files, data_types=data_types, output_dir=output_dir
         )
 
-        console.print(f"✅ [green]Integration models fitted successfully![/green]")
+        console.print("✅ [green]Integration models fitted successfully![/green]")
         console.print(f"📊 Latent factors: {n_factors}")
         console.print(f"💾 Models saved to: [cyan]{output_dir}[/cyan]")
 
@@ -106,7 +106,7 @@ def embed(
     Creates integrated embeddings from multiple omics datasets
     with pathway analysis and visualization.
     """
-    console.print(f"🎯 [bold blue]Starting multi-omics embedding...[/bold blue]")
+    console.print("🎯 [bold blue]Starting multi-omics embedding...[/bold blue]")
 
     try:
         from tier1_suite.multi_omics import MultiOmicsAnalyzer
@@ -117,7 +117,7 @@ def embed(
         console.print(f"🤖 Loading integration models from: [cyan]{model_dir}[/cyan]")
         analyzer.load_models(model_dir)
 
-        console.print(f"🎯 Generating integrated embeddings...")
+        console.print("🎯 Generating integrated embeddings...")
         embedding_results = analyzer.generate_embeddings(
             data_files=data_files,
             embedding_dim=embedding_dim,
@@ -130,7 +130,7 @@ def embed(
         console.print(f"💾 Saving embeddings to: [cyan]{output_file}[/cyan]")
         embedding_results.to_csv(output_file, index=False)
 
-        console.print(f"✅ [green]Embeddings generated successfully![/green]")
+        console.print("✅ [green]Embeddings generated successfully![/green]")
 
     except Exception as e:
         console.print(f"❌ [red]Error during embedding: {e}[/red]")
@@ -166,11 +166,12 @@ def eval(
     Comprehensive evaluation using clustering metrics, biological validation,
     and pathway enrichment analysis.
     """
-    console.print(f"📊 [bold blue]Starting multi-omics evaluation...[/bold blue]")
+    console.print("📊 [bold blue]Starting multi-omics evaluation...[/bold blue]")
 
     try:
-        from tier1_suite.multi_omics import MultiOmicsAnalyzer
         import pandas as pd
+
+        from tier1_suite.multi_omics import MultiOmicsAnalyzer
 
         analyzer = MultiOmicsAnalyzer(verbose=verbose)
 
@@ -190,7 +191,7 @@ def eval(
             generate_report=generate_report,
         )
 
-        console.print(f"✅ [green]Evaluation completed![/green]")
+        console.print("✅ [green]Evaluation completed![/green]")
         console.print(f"📊 Evaluation scores: {eval_results['summary']}")
         console.print(f"📂 Results saved to: [cyan]{output_dir}[/cyan]")
 
@@ -229,11 +230,12 @@ def discover_biomarkers(
     Uses integrated analysis to identify cross-omics biomarker signatures
     with biological validation and pathway analysis.
     """
-    console.print(f"🔍 [bold blue]Starting biomarker discovery...[/bold blue]")
+    console.print("🔍 [bold blue]Starting biomarker discovery...[/bold blue]")
 
     try:
-        from tier1_suite.multi_omics import MultiOmicsAnalyzer
         import pandas as pd
+
+        from tier1_suite.multi_omics import MultiOmicsAnalyzer
 
         analyzer = MultiOmicsAnalyzer(verbose=verbose)
 
@@ -254,7 +256,7 @@ def discover_biomarkers(
             generate_plots=generate_plots,
         )
 
-        console.print(f"✅ [green]Biomarker discovery completed![/green]")
+        console.print("✅ [green]Biomarker discovery completed![/green]")
         console.print(
             f"🎯 Discovered {len(discovery_results['top_biomarkers'])} biomarkers"
         )
@@ -292,7 +294,7 @@ def pipeline(
     with comprehensive biological validation and reporting.
     """
     console.print(
-        f"🚀 [bold blue]Starting complete multi-omics pipeline...[/bold blue]"
+        "🚀 [bold blue]Starting complete multi-omics pipeline...[/bold blue]"
     )
 
     try:
@@ -302,7 +304,7 @@ def pipeline(
 
         # Run pipeline
         console.print("🚀 Running complete multi-omics pipeline...")
-        pipeline_results = analyzer.run_complete_pipeline(
+        analyzer.run_complete_pipeline(
             data_files=data_files,
             output_dir=output_dir,
             config_file=config_file,
@@ -313,7 +315,7 @@ def pipeline(
             skip_discovery=skip_discovery,
         )
 
-        console.print(f"✅ [green]Complete multi-omics pipeline finished![/green]")
+        console.print("✅ [green]Complete multi-omics pipeline finished![/green]")
         console.print(f"📂 Results saved to: [cyan]{output_dir}[/cyan]")
 
     except Exception as e:

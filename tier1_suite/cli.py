@@ -7,20 +7,20 @@ Command-line interface for the TIER 1 Cellular Rejuvenation Suite.
 Provides access to bulk analysis, single-cell analysis, and multi-omics integration.
 """
 
+import sys
+from pathlib import Path
+
 import typer
 from rich.console import Console
 from rich.table import Table
-from typing import Optional
-import sys
-from pathlib import Path
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from tier1_suite.bulk_cli import bulk_app
-from tier1_suite.single_cell_cli import sc_app
 from tier1_suite.multi_omics_cli import multi_app
+from tier1_suite.single_cell_cli import sc_app
 
 # Initialize Typer app and Rich console
 app = typer.Typer(
@@ -41,8 +41,8 @@ app.add_typer(multi_app, name="multi", help="Multi-omics integration and evaluat
 def version():
     """Show version information"""
     console.print("🧬 [bold blue]TIER 1 Cellular Rejuvenation Suite[/bold blue]")
-    console.print(f"Version: [green]1.0.0[/green]")
-    console.print(f"Author: [yellow]Kemal Yaylali[/yellow]")
+    console.print("Version: [green]1.0.0[/green]")
+    console.print("Author: [yellow]Kemal Yaylali[/yellow]")
 
 
 @app.command()

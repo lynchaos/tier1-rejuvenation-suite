@@ -2,11 +2,12 @@
 Utility functions for data transformations.
 """
 
+from typing import Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.decomposition import PCA
-from typing import Tuple, Optional, Union
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
 
 def normalize_data(data: pd.DataFrame, method: str = "log1p") -> pd.DataFrame:
@@ -104,7 +105,9 @@ def apply_pca(
     pca = PCA(n_components=n_components, random_state=random_state)
     pca_result = pca.fit_transform(data)
     pca_df = pd.DataFrame(
-        pca_result, index=data.index, columns=[f"PC{i+1}" for i in range(n_components)]
+        pca_result,
+        index=data.index,
+        columns=[f"PC{i + 1}" for i in range(n_components)],
     )
     return pca_df, pca
 

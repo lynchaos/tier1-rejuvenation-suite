@@ -7,16 +7,17 @@ Main analyzer class for bulk omics data processing, ML model training,
 and comprehensive biomarker validation.
 """
 
-import pandas as pd
-import numpy as np
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
 import pickle
+import warnings
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 import joblib
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.preprocessing import StandardScaler
-import warnings
 
 warnings.filterwarnings("ignore")
 
@@ -76,10 +77,12 @@ class BulkAnalyzer:
         data: pd.DataFrame,
         target_column: Optional[str] = None,
         output_dir: str = "models",
-        models: List[str] = ["rf", "xgb", "lgb"],
+        models: List[str] = None,
     ) -> Dict[str, Any]:
         """Fit ensemble ML models with biological validation."""
 
+        if models is None:
+            models = ["rf", "xgb", "lgb"]
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 

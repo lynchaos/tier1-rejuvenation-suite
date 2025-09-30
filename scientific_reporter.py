@@ -6,60 +6,63 @@ Generates comprehensive, peer-review quality scientific reports
 with rigorous analysis, statistical validation, and publication-ready formatting.
 """
 
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from pathlib import Path
-from datetime import datetime
-import json
-from typing import Dict, List, Optional, Tuple, Any
-from scipy import stats
-from sklearn.metrics import silhouette_score, adjusted_rand_score
 import warnings
-warnings.filterwarnings('ignore')
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from scipy import stats
+
+warnings.filterwarnings("ignore")
+
 
 class ScientificReporter:
     """
     Comprehensive scientific reporting system for cell rejuvenation analyses
     """
-    
+
     def __init__(self, output_dir: str = "reports"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-    def generate_regenomics_report(self, results_df: pd.DataFrame, metadata: Dict) -> str:
+
+    def generate_regenomics_report(
+        self, results_df: pd.DataFrame, metadata: Dict
+    ) -> str:
         """
         Generate comprehensive scientific report for RegenOmics Master Pipeline analysis
         """
         report_path = self.output_dir / f"RegenOmics_Report_{self.timestamp}.md"
-        
+
         # Extract data for analysis
-        scores = results_df['rejuvenation_score'].values
-        categories = results_df['rejuvenation_category'].values
-        confidence_lower = results_df.get('confidence_lower', scores * 0.9)
-        confidence_upper = results_df.get('confidence_upper', scores * 1.1)
-        
+        scores = results_df["rejuvenation_score"].values
+        categories = results_df["rejuvenation_category"].values
+        confidence_lower = results_df.get("confidence_lower", scores * 0.9)
+        confidence_upper = results_df.get("confidence_upper", scores * 1.1)
+
         # Statistical analysis
         stats_results = self._perform_statistical_analysis(scores)
-        
+
         # Generate visualizations
         fig_paths = self._generate_regenomics_figures(results_df)
-        
+
         # Create report
         report_content = f"""# RegenOmics Master Pipeline: Comprehensive Scientific Analysis Report
 
 ## Executive Summary
 
-**Analysis Date:** {datetime.now().strftime("%B %d, %Y")}  
-**Dataset:** {metadata.get('dataset_name', 'Unknown')}  
-**Samples Analyzed:** {len(scores)}  
-**Analysis Pipeline:** Ensemble Machine Learning for Cellular Rejuvenation Scoring  
+**Analysis Date:** {datetime.now().strftime("%B %d, %Y")}
+**Dataset:** {metadata.get("dataset_name", "Unknown")}
+**Samples Analyzed:** {len(scores)}
+**Analysis Pipeline:** Ensemble Machine Learning for Cellular Rejuvenation Scoring
 
 ### Key Findings
 - **Mean Rejuvenation Score:** {np.mean(scores):.3f} ± {np.std(scores):.3f} (μ ± σ)
-- **Score Distribution:** Normal distribution (Shapiro-Wilk p = {stats_results['normality_p']:.3f})
+- **Score Distribution:** Normal distribution (Shapiro-Wilk p = {stats_results["normality_p"]:.3f})
 - **Confidence Interval (95%):** [{np.mean(confidence_lower):.3f}, {np.mean(confidence_upper):.3f}]
 - **Rejuvenation Categories:** {len(np.unique(categories))} distinct cellular states identified
 
@@ -74,7 +77,7 @@ Cellular rejuvenation represents a fundamental biological process wherein aged o
 The RegenOmics Master Pipeline utilizes a sophisticated ensemble learning architecture comprising:
 
 - **Random Forest Regression:** Capturing non-linear feature interactions and providing feature importance rankings
-- **Gradient Boosting Machines:** Sequential error correction for enhanced predictive accuracy  
+- **Gradient Boosting Machines:** Sequential error correction for enhanced predictive accuracy
 - **XGBoost Algorithm:** Optimized gradient boosting with regularization to prevent overfitting
 - **Elastic Net Regression:** Linear model with L1/L2 regularization for baseline comparison
 
@@ -83,7 +86,7 @@ Each model contributes weighted predictions based on cross-validation performanc
 ### 1.3 Statistical Validation
 Model performance was assessed using 5-fold cross-validation with the following metrics:
 - **R² Score:** Coefficient of determination measuring explained variance
-- **Bootstrap Confidence Intervals:** {metadata.get('bootstrap_samples', 100)} iterations for uncertainty quantification
+- **Bootstrap Confidence Intervals:** {metadata.get("bootstrap_samples", 100)} iterations for uncertainty quantification
 - **Feature Importance Analysis:** Permutation-based importance scoring
 
 ---
@@ -101,9 +104,9 @@ Model performance was assessed using 5-fold cross-validation with the following 
 - **Range:** [{np.min(scores):.4f}, {np.max(scores):.4f}]
 
 **Distribution Analysis:**
-- **Skewness:** {stats.skew(scores):.3f} ({'right' if stats.skew(scores) > 0 else 'left'}-tailed distribution)
-- **Kurtosis:** {stats.kurtosis(scores):.3f} ({'leptokurtic' if stats.kurtosis(scores) > 0 else 'platykurtic'} distribution)
-- **Normality Test:** Shapiro-Wilk W = {stats_results['shapiro_stat']:.3f}, p = {stats_results['normality_p']:.3f}
+- **Skewness:** {stats.skew(scores):.3f} ({"right" if stats.skew(scores) > 0 else "left"}-tailed distribution)
+- **Kurtosis:** {stats.kurtosis(scores):.3f} ({"leptokurtic" if stats.kurtosis(scores) > 0 else "platykurtic"} distribution)
+- **Normality Test:** Shapiro-Wilk W = {stats_results["shapiro_stat"]:.3f}, p = {stats_results["normality_p"]:.3f}
 
 ### 2.2 Rejuvenation Categories
 
@@ -128,17 +131,17 @@ The analysis identified {len(np.unique(categories))} distinct cellular rejuvenat
 ### 2.3 Statistical Significance Testing
 
 **Between-Group Comparisons:**
-- **ANOVA F-statistic:** {stats_results['anova_f']:.3f}
-- **p-value:** {stats_results['anova_p']:.3f} ({'**Significant**' if stats_results['anova_p'] < 0.05 else 'Not significant'})
-- **Effect Size (η²):** {stats_results['eta_squared']:.3f}
+- **ANOVA F-statistic:** {stats_results["anova_f"]:.3f}
+- **p-value:** {stats_results["anova_p"]:.3f} ({"**Significant**" if stats_results["anova_p"] < 0.05 else "Not significant"})
+- **Effect Size (η²):** {stats_results["eta_squared"]:.3f}
 
 **Post-hoc Analysis:** Tukey's HSD test revealed significant pairwise differences between rejuvenation categories (p < 0.05), indicating distinct cellular states with measurable functional differences.
 
 ### 2.4 Confidence Interval Analysis
 
-Bootstrap confidence intervals (n = {metadata.get('bootstrap_samples', 100)}) provide robust uncertainty estimates:
+Bootstrap confidence intervals (n = {metadata.get("bootstrap_samples", 100)}) provide robust uncertainty estimates:
 
-- **Population Mean CI (95%):** [{stats_results['pop_mean_ci'][0]:.3f}, {stats_results['pop_mean_ci'][1]:.3f}]
+- **Population Mean CI (95%):** [{stats_results["pop_mean_ci"][0]:.3f}, {stats_results["pop_mean_ci"][1]:.3f}]
 - **Individual Prediction Intervals:** Mean width = {np.mean(confidence_upper - confidence_lower):.3f}
 - **Coverage Probability:** {np.mean((scores >= confidence_lower) & (scores <= confidence_upper)) * 100:.1f}%
 
@@ -152,7 +155,7 @@ The observed rejuvenation scores represent a continuous spectrum of cellular sta
 
 1. **Heterogeneity:** Significant inter-cellular variability in rejuvenation capacity
 2. **Plasticity:** Continuous rather than discrete cellular states
-3. **Therapeutic Window:** {(category_counts.get('Partially Rejuvenated', 0) + category_counts.get('Intermediate', 0)) / len(scores) * 100:.1f}% of cells show intermediate states amenable to intervention
+3. **Therapeutic Window:** {(category_counts.get("Partially Rejuvenated", 0) + category_counts.get("Intermediate", 0)) / len(scores) * 100:.1f}% of cells show intermediate states amenable to intervention
 
 ### 3.2 Mechanistic Insights
 
@@ -165,7 +168,7 @@ The ensemble model identifies key molecular signatures associated with rejuvenat
 
 These findings have significant implications for therapeutic development:
 - **Biomarker Discovery:** Rejuvenation scores serve as quantitative endpoints for clinical trials
-- **Patient Stratification:** Categorical assignments enable personalized treatment approaches  
+- **Patient Stratification:** Categorical assignments enable personalized treatment approaches
 - **Treatment Monitoring:** Longitudinal scoring can track therapeutic efficacy
 
 ---
@@ -175,16 +178,16 @@ These findings have significant implications for therapeutic development:
 ### 4.1 Model Performance Metrics
 
 The ensemble approach demonstrates robust predictive performance:
-- **Cross-validation R²:** Mean = {metadata.get('cv_r2_mean', 'N/A')}, SD = {metadata.get('cv_r2_std', 'N/A')}
-- **Feature Stability:** {metadata.get('feature_stability', 'N/A')}% of features show consistent importance across folds
-- **Prediction Concordance:** Inter-model correlation = {metadata.get('model_concordance', 'N/A')}
+- **Cross-validation R²:** Mean = {metadata.get("cv_r2_mean", "N/A")}, SD = {metadata.get("cv_r2_std", "N/A")}
+- **Feature Stability:** {metadata.get("feature_stability", "N/A")}% of features show consistent importance across folds
+- **Prediction Concordance:** Inter-model correlation = {metadata.get("model_concordance", "N/A")}
 
 ### 4.2 Quality Control
 
 **Data Quality Metrics:**
-- **Missing Values:** {metadata.get('missing_percentage', 0):.1f}% of data points
-- **Outlier Detection:** {metadata.get('outlier_count', 0)} samples flagged (z-score > 3)
-- **Batch Effects:** {'Detected and corrected' if metadata.get('batch_correction', False) else 'None detected'}
+- **Missing Values:** {metadata.get("missing_percentage", 0):.1f}% of data points
+- **Outlier Detection:** {metadata.get("outlier_count", 0)} samples flagged (z-score > 3)
+- **Batch Effects:** {"Detected and corrected" if metadata.get("batch_correction", False) else "None detected"}
 
 ---
 
@@ -223,12 +226,12 @@ The ensemble approach demonstrates robust predictive performance:
 ### 6.2 Statistical Methods
 - **Significance Level:** α = 0.05
 - **Multiple Comparisons:** Bonferroni correction applied where appropriate
-- **Bootstrap Iterations:** {metadata.get('bootstrap_samples', 100)} resamples
+- **Bootstrap Iterations:** {metadata.get("bootstrap_samples", 100)} resamples
 - **Cross-validation:** 5-fold stratified cross-validation
 
 ### 6.3 Data Preprocessing
-- **Normalization:** {metadata.get('normalization_method', 'Standard scaling')}
-- **Feature Selection:** {metadata.get('n_features', 'All')} features retained
+- **Normalization:** {metadata.get("normalization_method", "Standard scaling")}
+- **Feature Selection:** {metadata.get("n_features", "All")} features retained
 - **Quality Control:** Outlier detection and missing value imputation
 
 ---
@@ -241,9 +244,9 @@ The following figures provide detailed visual analysis of the results:
 {self._format_figure_list(fig_paths)}
 
 ### 7.2 Raw Data Summary
-- **Input File:** {metadata.get('input_file', 'N/A')}
-- **Processing Time:** {metadata.get('processing_time', 'N/A')} seconds
-- **Memory Usage:** {metadata.get('memory_usage', 'N/A')} MB
+- **Input File:** {metadata.get("input_file", "N/A")}
+- **Processing Time:** {metadata.get("processing_time", "N/A")} seconds
+- **Memory Usage:** {metadata.get("memory_usage", "N/A")} MB
 
 ---
 
@@ -261,42 +264,44 @@ The following figures provide detailed visual analysis of the results:
 
 ---
 
-*Report generated by TIER 1 RegenOmics Master Pipeline*  
+*Report generated by TIER 1 RegenOmics Master Pipeline*
 *For questions or technical support, please refer to the project documentation.*
 """
 
         # Write report
-        with open(report_path, 'w') as f:
+        with open(report_path, "w") as f:
             f.write(report_content)
-            
+
         return str(report_path)
-    
+
     def generate_singlecell_report(self, adata, analysis_results: Dict) -> str:
         """
         Generate comprehensive scientific report for Single-Cell Rejuvenation Atlas
         """
         report_path = self.output_dir / f"SingleCell_Report_{self.timestamp}.md"
-        
+
         # Extract analysis data
         n_cells = adata.n_obs
         n_genes = adata.n_var
-        n_clusters = len(adata.obs['leiden'].unique()) if 'leiden' in adata.obs.columns else 1
-        
+        n_clusters = (
+            len(adata.obs["leiden"].unique()) if "leiden" in adata.obs.columns else 1
+        )
+
         report_content = f"""# Single-Cell Rejuvenation Atlas: Comprehensive Scientific Analysis Report
 
 ## Executive Summary
 
-**Analysis Date:** {datetime.now().strftime("%B %d, %Y")}  
-**Dataset:** Single-Cell RNA Sequencing Analysis  
-**Cells Analyzed:** {n_cells:,}  
-**Genes Profiled:** {n_genes:,}  
-**Clusters Identified:** {n_clusters}  
+**Analysis Date:** {datetime.now().strftime("%B %d, %Y")}
+**Dataset:** Single-Cell RNA Sequencing Analysis
+**Cells Analyzed:** {n_cells:,}
+**Genes Profiled:** {n_genes:,}
+**Clusters Identified:** {n_clusters}
 
 ### Key Findings
 - **Cellular Heterogeneity:** {n_clusters} distinct cell populations identified through unsupervised clustering
-- **Trajectory Analysis:** {'Completed' if n_clusters > 1 else 'Skipped (homogeneous population)'}
-- **Rejuvenation Signatures:** {'Detected' if analysis_results.get('rejuvenation_detected', False) else 'Analysis completed'}
-- **Quality Metrics:** Mean genes per cell: {adata.obs['n_genes'].mean():.0f}, Mean UMI per cell: {adata.obs['total_counts'].mean():.0f}
+- **Trajectory Analysis:** {"Completed" if n_clusters > 1 else "Skipped (homogeneous population)"}
+- **Rejuvenation Signatures:** {"Detected" if analysis_results.get("rejuvenation_detected", False) else "Analysis completed"}
+- **Quality Metrics:** Mean genes per cell: {adata.obs["n_genes"].mean():.0f}, Mean UMI per cell: {adata.obs["total_counts"].mean():.0f}
 
 ---
 
@@ -328,15 +333,15 @@ The analysis specifically targets cellular rejuvenation signatures through:
 **Cell Population Statistics:**
 - **Total Cells:** {n_cells:,} (post-quality control)
 - **Total Genes:** {n_genes:,} (expressed genes)
-- **Median Genes per Cell:** {adata.obs['n_genes'].median():.0f}
-- **Median UMI per Cell:** {adata.obs['total_counts'].median():.0f}
-- **Mitochondrial Gene %:** {adata.obs.get('pct_counts_mt', pd.Series([0])).mean():.1f}%
+- **Median Genes per Cell:** {adata.obs["n_genes"].median():.0f}
+- **Median UMI per Cell:** {adata.obs["total_counts"].median():.0f}
+- **Mitochondrial Gene %:** {adata.obs.get("pct_counts_mt", pd.Series([0])).mean():.1f}%
 
 ### 2.2 Quality Control Metrics
 
 **Pre-processing Results:**
-- **Highly Variable Genes:** {adata.var['highly_variable'].sum() if 'highly_variable' in adata.var.columns else 'N/A'}
-- **Principal Components:** 50 (explaining {analysis_results.get('pca_variance', 'N/A')}% of variance)
+- **Highly Variable Genes:** {adata.var["highly_variable"].sum() if "highly_variable" in adata.var.columns else "N/A"}
+- **Principal Components:** 50 (explaining {analysis_results.get("pca_variance", "N/A")}% of variance)
 - **Neighborhood Graph:** k = 15 nearest neighbors
 - **UMAP Parameters:** n_neighbors = 15, min_dist = 0.5
 
@@ -344,8 +349,8 @@ The analysis specifically targets cellular rejuvenation signatures through:
 
 **Leiden Clustering Results:**
 - **Number of Clusters:** {n_clusters}
-- **Modularity Score:** {analysis_results.get('modularity', 'N/A')}
-- **Cluster Sizes:** Variable (range: {analysis_results.get('min_cluster_size', 'N/A')} - {analysis_results.get('max_cluster_size', 'N/A')} cells)
+- **Modularity Score:** {analysis_results.get("modularity", "N/A")}
+- **Cluster Sizes:** Variable (range: {analysis_results.get("min_cluster_size", "N/A")} - {analysis_results.get("max_cluster_size", "N/A")} cells)
 
 """
 
@@ -355,9 +360,9 @@ The analysis specifically targets cellular rejuvenation signatures through:
 
 **Pseudotime Inference:**
 - **PAGA Analysis:** Completed successfully
-- **Trajectory Branches:** {analysis_results.get('n_branches', 'Multiple')}
+- **Trajectory Branches:** {analysis_results.get("n_branches", "Multiple")}
 - **Temporal Ordering:** Cells ordered along pseudotime axis
-- **Branch Points:** {analysis_results.get('branch_points', 'Multiple')} decision points identified
+- **Branch Points:** {analysis_results.get("branch_points", "Multiple")} decision points identified
 
 **Biological Interpretation:**
 The trajectory analysis reveals distinct cellular states and transition pathways, suggesting:
@@ -366,7 +371,7 @@ The trajectory analysis reveals distinct cellular states and transition pathways
 3. **Cellular Plasticity:** Evidence of state transitions and reprogramming
 """
         else:
-            report_content += f"""
+            report_content += """
 ### 2.4 Population Homogeneity
 
 **Clustering Analysis:**
@@ -381,8 +386,8 @@ The analysis identified a single cluster, indicating:
 ### 2.5 Rejuvenation Signature Analysis
 
 **Molecular Markers:**
-- **Senescence Markers:** {analysis_results.get('senescence_markers', 0)} genes detected
-- **Pluripotency Factors:** {analysis_results.get('pluripotency_markers', 0)} genes detected
+- **Senescence Markers:** {analysis_results.get("senescence_markers", 0)} genes detected
+- **Pluripotency Factors:** {analysis_results.get("pluripotency_markers", 0)} genes detected
 - **Reprogramming Signatures:** Analysis completed for key transcription factors
 - **Metabolic Markers:** Mitochondrial and glycolytic gene expression profiled
 
@@ -395,7 +400,7 @@ The analysis identified a single cluster, indicating:
 The single-cell analysis reveals a complex landscape of cellular states with implications for rejuvenation research:
 
 1. **State Diversity:** {n_clusters} distinct cellular populations suggest functional specialization
-2. **Dynamic Processes:** {'Trajectory analysis indicates active cellular transitions' if n_clusters > 1 else 'Stable cellular state observed'}
+2. **Dynamic Processes:** {"Trajectory analysis indicates active cellular transitions" if n_clusters > 1 else "Stable cellular state observed"}
 3. **Rejuvenation Potential:** Molecular signatures provide insights into cellular plasticity
 
 ### 3.2 Mechanistic Insights
@@ -425,12 +430,12 @@ The single-cell analysis reveals a complex landscape of cellular states with imp
 **Dimensionality Reduction:**
 - **PCA Validation:** Elbow plot confirms appropriate component number
 - **UMAP Optimization:** Parameters tuned for optimal visualization
-- **Batch Effects:** {'Corrected' if analysis_results.get('batch_correction', False) else 'Not detected'}
+- **Batch Effects:** {"Corrected" if analysis_results.get("batch_correction", False) else "Not detected"}
 
 ### 4.2 Statistical Robustness
 
 **Clustering Validation:**
-- **Silhouette Score:** {analysis_results.get('silhouette_score', 'N/A')}
+- **Silhouette Score:** {analysis_results.get("silhouette_score", "N/A")}
 - **Stability Analysis:** Bootstrap clustering performed
 - **Marker Gene Significance:** Wilcoxon rank-sum test for differential expression
 
@@ -461,7 +466,7 @@ The analysis identifies several potential therapeutic intervention points:
 
 1. **Cellular Heterogeneity:** {n_clusters} distinct cell states identified in the analyzed population
 2. **Molecular Signatures:** Comprehensive profiling of rejuvenation-associated gene expression
-3. **Dynamic Processes:** {'Evidence of cellular transitions and plasticity' if n_clusters > 1 else 'Stable cellular state with defined characteristics'}
+3. **Dynamic Processes:** {"Evidence of cellular transitions and plasticity" if n_clusters > 1 else "Stable cellular state with defined characteristics"}
 
 ### 6.2 Recommendations
 
@@ -487,43 +492,45 @@ The analysis identifies several potential therapeutic intervention points:
 
 ### 7.2 Quality Control Thresholds
 - **Minimum Genes per Cell:** 200
-- **Maximum Genes per Cell:** {analysis_results.get('max_genes_per_cell', '5000')}
-- **Mitochondrial Content:** <{analysis_results.get('mt_threshold', 20)}%
+- **Maximum Genes per Cell:** {analysis_results.get("max_genes_per_cell", "5000")}
+- **Mitochondrial Content:** <{analysis_results.get("mt_threshold", 20)}%
 - **Minimum Cells per Gene:** 3
 
 ---
 
-*Report generated by TIER 1 Single-Cell Rejuvenation Atlas*  
+*Report generated by TIER 1 Single-Cell Rejuvenation Atlas*
 *Analysis completed on {datetime.now().strftime("%Y-%m-%d at %H:%M:%S")}*
 """
 
-        with open(report_path, 'w') as f:
+        with open(report_path, "w") as f:
             f.write(report_content)
-            
+
         return str(report_path)
-    
-    def generate_multiomics_report(self, integrated_data: np.ndarray, metadata: Dict) -> str:
+
+    def generate_multiomics_report(
+        self, integrated_data: np.ndarray, metadata: Dict
+    ) -> str:
         """
         Generate comprehensive scientific report for Multi-Omics Fusion Intelligence
         """
         report_path = self.output_dir / f"MultiOmics_Report_{self.timestamp}.md"
-        
+
         n_samples, n_features = integrated_data.shape
-        
+
         report_content = f"""# Multi-Omics Fusion Intelligence: Comprehensive Scientific Analysis Report
 
 ## Executive Summary
 
-**Analysis Date:** {datetime.now().strftime("%B %d, %Y")}  
-**Multi-Omics Integration Analysis**  
-**Samples Analyzed:** {n_samples}  
-**Integrated Features:** {n_features}  
-**Omics Layers:** {metadata.get('n_omics', 3)} (RNA-seq, Proteomics, Metabolomics)  
+**Analysis Date:** {datetime.now().strftime("%B %d, %Y")}
+**Multi-Omics Integration Analysis**
+**Samples Analyzed:** {n_samples}
+**Integrated Features:** {n_features}
+**Omics Layers:** {metadata.get("n_omics", 3)} (RNA-seq, Proteomics, Metabolomics)
 
 ### Key Findings
-- **Data Integration:** Successfully integrated {metadata.get('n_omics', 3)} omics layers using deep learning
-- **Dimensionality Reduction:** {metadata.get('original_features', 'N/A')} → {n_features} integrated features
-- **Feature Learning:** Autoencoder achieved {metadata.get('final_loss', 'N/A')} reconstruction loss
+- **Data Integration:** Successfully integrated {metadata.get("n_omics", 3)} omics layers using deep learning
+- **Dimensionality Reduction:** {metadata.get("original_features", "N/A")} → {n_features} integrated features
+- **Feature Learning:** Autoencoder achieved {metadata.get("final_loss", "N/A")} reconstruction loss
 - **Biological Signatures:** Multi-modal patterns identified across molecular layers
 
 ---
@@ -549,9 +556,9 @@ Modern systems biology requires integration of multiple molecular layers to unde
 - **Loss Function:** Mean Squared Error for faithful data reconstruction
 
 **Training Parameters:**
-- **Epochs:** {metadata.get('n_epochs', 100)}
-- **Learning Rate:** {metadata.get('learning_rate', 0.001)}
-- **Batch Size:** {metadata.get('batch_size', 32)}
+- **Epochs:** {metadata.get("n_epochs", 100)}
+- **Learning Rate:** {metadata.get("learning_rate", 0.001)}
+- **Batch Size:** {metadata.get("batch_size", 32)}
 - **Optimization:** Adam optimizer with adaptive learning rates
 
 ---
@@ -561,24 +568,24 @@ Modern systems biology requires integration of multiple molecular layers to unde
 ### 2.1 Data Integration Summary
 
 **Input Data Characteristics:**
-- **RNA-seq Features:** {metadata.get('rnaseq_features', 'N/A')} genes
-- **Proteomics Features:** {metadata.get('proteomics_features', 'N/A')} proteins  
-- **Metabolomics Features:** {metadata.get('metabolomics_features', 'N/A')} metabolites
-- **Total Input Dimensions:** {metadata.get('total_input_features', 'N/A')}
+- **RNA-seq Features:** {metadata.get("rnaseq_features", "N/A")} genes
+- **Proteomics Features:** {metadata.get("proteomics_features", "N/A")} proteins
+- **Metabolomics Features:** {metadata.get("metabolomics_features", "N/A")} metabolites
+- **Total Input Dimensions:** {metadata.get("total_input_features", "N/A")}
 - **Sample Size:** {n_samples} biological samples
 
 ### 2.2 Model Performance
 
 **Training Dynamics:**
-- **Initial Loss:** {metadata.get('initial_loss', 'N/A')}
-- **Final Loss:** {metadata.get('final_loss', 'N/A')}
-- **Convergence:** {'Achieved' if metadata.get('converged', True) else 'Incomplete'} after {metadata.get('n_epochs', 100)} epochs
-- **Reconstruction Accuracy:** {metadata.get('reconstruction_r2', 'N/A')} R² score
+- **Initial Loss:** {metadata.get("initial_loss", "N/A")}
+- **Final Loss:** {metadata.get("final_loss", "N/A")}
+- **Convergence:** {"Achieved" if metadata.get("converged", True) else "Incomplete"} after {metadata.get("n_epochs", 100)} epochs
+- **Reconstruction Accuracy:** {metadata.get("reconstruction_r2", "N/A")} R² score
 
 **Feature Learning Quality:**
 - **Latent Space Dimensions:** {n_features}
-- **Information Retention:** {metadata.get('explained_variance', 'N/A')}% of original variance
-- **Cross-Modal Correlation:** {metadata.get('cross_modal_correlation', 'N/A')}
+- **Information Retention:** {metadata.get("explained_variance", "N/A")}% of original variance
+- **Cross-Modal Correlation:** {metadata.get("cross_modal_correlation", "N/A")}
 - **Feature Stability:** Consistent across training iterations
 
 ### 2.3 Integrated Feature Analysis
@@ -586,9 +593,9 @@ Modern systems biology requires integration of multiple molecular layers to unde
 **Latent Space Characteristics:**
 The {n_features}-dimensional integrated feature space captures essential multi-omics patterns:
 
-- **Feature 1-{n_features//3}:** Transcriptomic-dominated signatures
-- **Feature {n_features//3+1}-{2*n_features//3}:** Proteomic-metabolomic interactions
-- **Feature {2*n_features//3+1}-{n_features}:** Cross-layer regulatory patterns
+- **Feature 1-{n_features // 3}:** Transcriptomic-dominated signatures
+- **Feature {n_features // 3 + 1}-{2 * n_features // 3}:** Proteomic-metabolomic interactions
+- **Feature {2 * n_features // 3 + 1}-{n_features}:** Cross-layer regulatory patterns
 
 **Biological Interpretation:**
 - **Pathway Representation:** Major biological pathways encoded in latent features
@@ -605,7 +612,7 @@ The integrated analysis reveals complex molecular interactions:
 
 **Central Dogma Integration:**
 - **DNA → RNA:** Transcriptional regulatory patterns
-- **RNA → Protein:** Translation efficiency signatures  
+- **RNA → Protein:** Translation efficiency signatures
 - **Protein → Metabolite:** Enzymatic activity networks
 - **Feedback Loops:** Multi-directional regulatory circuits
 
@@ -642,8 +649,8 @@ The integrated features represent robust biomarkers combining:
 - **Learning Rate:** Adaptive scheduling implemented
 
 **Cross-Validation Results:**
-- **5-Fold CV Loss:** {metadata.get('cv_loss_mean', 'N/A')} ± {metadata.get('cv_loss_std', 'N/A')}
-- **Stability Score:** {metadata.get('model_stability', 'N/A')}
+- **5-Fold CV Loss:** {metadata.get("cv_loss_mean", "N/A")} ± {metadata.get("cv_loss_std", "N/A")}
+- **Stability Score:** {metadata.get("model_stability", "N/A")}
 - **Generalization:** Consistent performance across validation sets
 
 ### 4.2 Biological Validation
@@ -679,19 +686,19 @@ The integrated features represent robust biomarkers combining:
 
 **Neural Network Architecture:**
 ```
-Input Layer: {metadata.get('total_input_features', 'N/A')} features
-Hidden Layer 1: {metadata.get('hidden_1', 512)} neurons (ReLU)
-Hidden Layer 2: {metadata.get('hidden_2', 256)} neurons (ReLU) 
+Input Layer: {metadata.get("total_input_features", "N/A")} features
+Hidden Layer 1: {metadata.get("hidden_1", 512)} neurons (ReLU)
+Hidden Layer 2: {metadata.get("hidden_2", 256)} neurons (ReLU)
 Latent Layer: {n_features} neurons (Linear)
-Hidden Layer 3: {metadata.get('hidden_2', 256)} neurons (ReLU)
-Hidden Layer 4: {metadata.get('hidden_1', 512)} neurons (ReLU)
-Output Layer: {metadata.get('total_input_features', 'N/A')} features (Linear)
+Hidden Layer 3: {metadata.get("hidden_2", 256)} neurons (ReLU)
+Hidden Layer 4: {metadata.get("hidden_1", 512)} neurons (ReLU)
+Output Layer: {metadata.get("total_input_features", "N/A")} features (Linear)
 ```
 
 **Training Protocol:**
 - **Loss Function:** Mean Squared Error
 - **Optimizer:** Adam (β1=0.9, β2=0.999)
-- **Learning Rate:** {metadata.get('learning_rate', 0.001)} with decay
+- **Learning Rate:** {metadata.get("learning_rate", 0.001)} with decay
 - **Early Stopping:** Validation loss plateau detection
 
 ---
@@ -729,7 +736,7 @@ The integrated features enable identification of:
 
 ### 7.1 Key Achievements
 
-1. **Successful Integration:** {metadata.get('n_omics', 3)} omics layers integrated into coherent {n_features}-dimensional space
+1. **Successful Integration:** {metadata.get("n_omics", 3)} omics layers integrated into coherent {n_features}-dimensional space
 2. **Biological Validity:** Integrated features capture known biological relationships
 3. **Technical Robustness:** Model demonstrates consistent performance and stability
 4. **Discovery Potential:** Novel multi-layer signatures identified for further investigation
@@ -771,146 +778,166 @@ The integrated features enable identification of:
 
 ---
 
-*Report generated by TIER 1 Multi-Omics Fusion Intelligence*  
-*Analysis completed on {datetime.now().strftime("%Y-%m-%d at %H:%M:%S")}*  
+*Report generated by TIER 1 Multi-Omics Fusion Intelligence*
+*Analysis completed on {datetime.now().strftime("%Y-%m-%d at %H:%M:%S")}*
 *Deep learning framework: PyTorch 2.8.0*
 """
 
-        with open(report_path, 'w') as f:
+        with open(report_path, "w") as f:
             f.write(report_content)
-            
+
         return str(report_path)
-    
+
     def _perform_statistical_analysis(self, scores: np.ndarray) -> Dict:
         """Perform comprehensive statistical analysis"""
         results = {}
-        
+
         # Normality testing
         shapiro_stat, normality_p = stats.shapiro(scores)
-        results['shapiro_stat'] = shapiro_stat
-        results['normality_p'] = normality_p
-        
+        results["shapiro_stat"] = shapiro_stat
+        results["normality_p"] = normality_p
+
         # ANOVA (if categories available)
         # For demo, create mock groups with proper sizes
         n = len(scores)
         n_per_group = n // 3
-        groups = np.concatenate([
-            np.repeat('Group1', n_per_group),
-            np.repeat('Group2', n_per_group), 
-            np.repeat('Group3', n - 2*n_per_group)  # Handle remainder
-        ])
-        
+        groups = np.concatenate(
+            [
+                np.repeat("Group1", n_per_group),
+                np.repeat("Group2", n_per_group),
+                np.repeat("Group3", n - 2 * n_per_group),  # Handle remainder
+            ]
+        )
+
         group_scores = [scores[groups == g] for g in np.unique(groups)]
-        
+
         f_stat, anova_p = stats.f_oneway(*group_scores)
-        results['anova_f'] = f_stat
-        results['anova_p'] = anova_p
-        
+        results["anova_f"] = f_stat
+        results["anova_p"] = anova_p
+
         # Effect size (eta squared)
-        ss_between = sum([len(g) * (np.mean(g) - np.mean(scores))**2 for g in group_scores])
-        ss_total = sum([(x - np.mean(scores))**2 for x in scores])
-        results['eta_squared'] = ss_between / ss_total if ss_total > 0 else 0
-        
+        ss_between = sum(
+            [len(g) * (np.mean(g) - np.mean(scores)) ** 2 for g in group_scores]
+        )
+        ss_total = sum([(x - np.mean(scores)) ** 2 for x in scores])
+        results["eta_squared"] = ss_between / ss_total if ss_total > 0 else 0
+
         # Population mean confidence interval
-        confidence_interval = stats.t.interval(0.95, len(scores)-1, 
-                                             loc=np.mean(scores), 
-                                             scale=stats.sem(scores))
-        results['pop_mean_ci'] = confidence_interval
-        
+        confidence_interval = stats.t.interval(
+            0.95, len(scores) - 1, loc=np.mean(scores), scale=stats.sem(scores)
+        )
+        results["pop_mean_ci"] = confidence_interval
+
         return results
-    
+
     def _generate_regenomics_figures(self, results_df: pd.DataFrame) -> List[str]:
         """Generate publication-quality figures for RegenOmics analysis"""
         figure_dir = self.output_dir / "figures"
         figure_dir.mkdir(exist_ok=True)
-        
+
         fig_paths = []
-        scores = results_df['rejuvenation_score'].values
-        categories = results_df['rejuvenation_category'].values
-        
+        scores = results_df["rejuvenation_score"].values
+        categories = results_df["rejuvenation_category"].values
+
         # Set style for publication quality
-        plt.style.use('default')
+        plt.style.use("default")
         sns.set_palette("husl")
-        
+
         # Figure 1: Score distribution
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-        
+
         # Histogram
-        ax1.hist(scores, bins=30, alpha=0.7, edgecolor='black')
-        ax1.axvline(np.mean(scores), color='red', linestyle='--', label=f'Mean = {np.mean(scores):.3f}')
-        ax1.set_xlabel('Rejuvenation Score')
-        ax1.set_ylabel('Frequency')
-        ax1.set_title('Distribution of Rejuvenation Scores')
+        ax1.hist(scores, bins=30, alpha=0.7, edgecolor="black")
+        ax1.axvline(
+            np.mean(scores),
+            color="red",
+            linestyle="--",
+            label=f"Mean = {np.mean(scores):.3f}",
+        )
+        ax1.set_xlabel("Rejuvenation Score")
+        ax1.set_ylabel("Frequency")
+        ax1.set_title("Distribution of Rejuvenation Scores")
         ax1.legend()
         ax1.grid(True, alpha=0.3)
-        
+
         # Box plot by category
-        categories_df = pd.DataFrame({'Score': scores, 'Category': categories})
-        sns.boxplot(data=categories_df, x='Category', y='Score', ax=ax2)
+        categories_df = pd.DataFrame({"Score": scores, "Category": categories})
+        sns.boxplot(data=categories_df, x="Category", y="Score", ax=ax2)
         ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45)
-        ax2.set_title('Scores by Rejuvenation Category')
+        ax2.set_title("Scores by Rejuvenation Category")
         ax2.grid(True, alpha=0.3)
-        
+
         plt.tight_layout()
         fig_path = figure_dir / f"rejuvenation_scores_analysis_{self.timestamp}.png"
-        plt.savefig(fig_path, dpi=300, bbox_inches='tight')
+        plt.savefig(fig_path, dpi=300, bbox_inches="tight")
         fig_paths.append(str(fig_path))
         plt.close()
-        
+
         # Figure 2: Statistical summary
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))
-        
+
         # Create summary statistics plot
         summary_stats = {
-            'Mean': np.mean(scores),
-            'Median': np.median(scores), 
-            'Q1': np.percentile(scores, 25),
-            'Q3': np.percentile(scores, 75),
-            'Min': np.min(scores),
-            'Max': np.max(scores)
+            "Mean": np.mean(scores),
+            "Median": np.median(scores),
+            "Q1": np.percentile(scores, 25),
+            "Q3": np.percentile(scores, 75),
+            "Min": np.min(scores),
+            "Max": np.max(scores),
         }
-        
-        bars = ax.bar(summary_stats.keys(), summary_stats.values(), 
-                     color=['skyblue', 'lightgreen', 'orange', 'orange', 'red', 'red'])
-        ax.set_ylabel('Rejuvenation Score')
-        ax.set_title('Statistical Summary of Rejuvenation Scores')
+
+        bars = ax.bar(
+            summary_stats.keys(),
+            summary_stats.values(),
+            color=["skyblue", "lightgreen", "orange", "orange", "red", "red"],
+        )
+        ax.set_ylabel("Rejuvenation Score")
+        ax.set_title("Statistical Summary of Rejuvenation Scores")
         ax.grid(True, alpha=0.3)
-        
+
         # Add value labels on bars
         for bar in bars:
             height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height,
-                   f'{height:.3f}', ha='center', va='bottom')
-        
+            ax.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                height,
+                f"{height:.3f}",
+                ha="center",
+                va="bottom",
+            )
+
         plt.tight_layout()
         fig_path = figure_dir / f"statistical_summary_{self.timestamp}.png"
-        plt.savefig(fig_path, dpi=300, bbox_inches='tight')
+        plt.savefig(fig_path, dpi=300, bbox_inches="tight")
         fig_paths.append(str(fig_path))
         plt.close()
-        
+
         return fig_paths
-    
+
     def _format_figure_list(self, fig_paths: List[str]) -> str:
         """Format figure list for report"""
         if not fig_paths:
             return "No figures generated."
-        
+
         formatted = ""
         for i, path in enumerate(fig_paths, 1):
             filename = Path(path).name
             formatted += f"- **Figure {i}:** {filename}\n"
-        
+
         return formatted
 
-def generate_comprehensive_report(app_name: str, results_data: Any, metadata: Dict = None) -> str:
+
+def generate_comprehensive_report(
+    app_name: str, results_data: Any, metadata: Dict = None
+) -> str:
     """
     Main function to generate scientific reports for any TIER 1 application
     """
     if metadata is None:
         metadata = {}
-    
+
     reporter = ScientificReporter()
-    
+
     if app_name == "RegenOmics Master Pipeline":
         return reporter.generate_regenomics_report(results_data, metadata)
     elif app_name == "Single-Cell Rejuvenation Atlas":
@@ -921,6 +948,7 @@ def generate_comprehensive_report(app_name: str, results_data: Any, metadata: Di
         return reporter.generate_multiomics_report(results_data, metadata)
     else:
         raise ValueError(f"Unknown application: {app_name}")
+
 
 if __name__ == "__main__":
     print("Scientific Reporter for TIER 1 Core Impact Applications")

@@ -9,17 +9,19 @@ quality control, dimensionality reduction, clustering, and trajectory analysis.
 
 try:
     import scanpy as sc
+
     SCANPY_AVAILABLE = True
 except ImportError:
     SCANPY_AVAILABLE = False
     sc = None
 
-import pandas as pd
-import numpy as np
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
-import anndata
 import warnings
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import anndata
+import numpy as np
+import pandas as pd
 
 warnings.filterwarnings("ignore")
 
@@ -148,13 +150,15 @@ class SingleCellAnalyzer:
         n_pcs: int = 50,
         n_neighbors: int = 15,
         resolution: float = 0.5,
-        methods: List[str] = ["umap", "tsne"],
+        methods: List[str] = None,
         batch_correct: bool = False,
         batch_key: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Run dimensionality reduction and embedding."""
 
         # Normalize and log-transform
+        if methods is None:
+            methods = ["umap", "tsne"]
         sc.pp.normalize_total(adata, target_sum=1e4)
         sc.pp.log1p(adata)
 

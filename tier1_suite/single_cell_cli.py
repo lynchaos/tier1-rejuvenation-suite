@@ -7,12 +7,12 @@ Command-line interface for single-cell RNA-seq analysis including QC,
 dimensionality reduction, clustering, and trajectory analysis.
 """
 
+import sys
+from pathlib import Path
+from typing import List, Optional
+
 import typer
 from rich.console import Console
-from rich.progress import track
-from typing import Optional, List
-from pathlib import Path
-import sys
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
@@ -50,7 +50,7 @@ def run_qc(
     Performs comprehensive QC including filtering, doublet detection,
     and mitochondrial gene analysis with biological validation.
     """
-    console.print(f"🔬 [bold blue]Starting single-cell quality control...[/bold blue]")
+    console.print("🔬 [bold blue]Starting single-cell quality control...[/bold blue]")
 
     try:
         from tier1_suite.single_cell import SingleCellAnalyzer
@@ -63,7 +63,7 @@ def run_qc(
 
         # Run QC
         console.print("🔍 Running quality control analysis...")
-        qc_results = analyzer.run_qc(
+        analyzer.run_qc(
             adata=adata,
             min_genes=min_genes,
             max_genes=max_genes,
@@ -77,7 +77,7 @@ def run_qc(
         console.print(f"💾 Saving QC data to: [cyan]{output_file}[/cyan]")
         adata.write(output_file)
 
-        console.print(f"✅ [green]Quality control completed![/green]")
+        console.print("✅ [green]Quality control completed![/green]")
         console.print(f"📊 Cells remaining: {adata.n_obs}")
         console.print(f"📊 Genes remaining: {adata.n_vars}")
 
@@ -113,7 +113,7 @@ def run_embed(
     and biologically-informed parameter selection.
     """
     console.print(
-        f"🎯 [bold blue]Starting dimensionality reduction and embedding...[/bold blue]"
+        "🎯 [bold blue]Starting dimensionality reduction and embedding...[/bold blue]"
     )
 
     try:
@@ -127,7 +127,7 @@ def run_embed(
 
         # Run embedding
         console.print("🎯 Computing embeddings...")
-        embedding_results = analyzer.run_embedding(
+        analyzer.run_embedding(
             adata=adata,
             n_pcs=n_pcs,
             n_neighbors=n_neighbors,
@@ -141,7 +141,7 @@ def run_embed(
         console.print(f"💾 Saving embedded data to: [cyan]{output_file}[/cyan]")
         adata.write(output_file)
 
-        console.print(f"✅ [green]Embedding completed![/green]")
+        console.print("✅ [green]Embedding completed![/green]")
         console.print(f"📊 Embeddings: {', '.join(methods)}")
 
     except Exception as e:
@@ -172,7 +172,7 @@ def cluster(
     Clusters cells using Leiden or Louvain algorithms with
     biological validation and automated cell type annotation.
     """
-    console.print(f"🎪 [bold blue]Starting clustering analysis...[/bold blue]")
+    console.print("🎪 [bold blue]Starting clustering analysis...[/bold blue]")
 
     try:
         from tier1_suite.single_cell import SingleCellAnalyzer
@@ -185,7 +185,7 @@ def cluster(
 
         # Run clustering
         console.print("🎪 Performing clustering...")
-        cluster_results = analyzer.cluster_cells(
+        analyzer.cluster_cells(
             adata=adata,
             method=method,
             resolution=resolution,
@@ -198,7 +198,7 @@ def cluster(
         console.print(f"💾 Saving clustered data to: [cyan]{output_file}[/cyan]")
         adata.write(output_file)
 
-        console.print(f"✅ [green]Clustering completed![/green]")
+        console.print("✅ [green]Clustering completed![/green]")
         console.print(f"📊 Number of clusters: {len(adata.obs[key_added].unique())}")
 
     except Exception as e:
@@ -233,7 +233,7 @@ def paga(
     Runs Partition-based Graph Abstraction (PAGA) for trajectory inference
     with specialized rejuvenation pathway analysis.
     """
-    console.print(f"🛤️ [bold blue]Starting PAGA trajectory analysis...[/bold blue]")
+    console.print("🛤️ [bold blue]Starting PAGA trajectory analysis...[/bold blue]")
 
     try:
         from tier1_suite.single_cell import SingleCellAnalyzer
@@ -246,7 +246,7 @@ def paga(
 
         # Run PAGA
         console.print("🛤️ Computing PAGA trajectories...")
-        paga_results = analyzer.run_paga_analysis(
+        analyzer.run_paga_analysis(
             adata=adata,
             cluster_key=cluster_key,
             root_cluster=root_cluster,
@@ -259,9 +259,9 @@ def paga(
         console.print(f"💾 Saving PAGA results to: [cyan]{output_file}[/cyan]")
         adata.write(output_file)
 
-        console.print(f"✅ [green]PAGA analysis completed![/green]")
+        console.print("✅ [green]PAGA analysis completed![/green]")
         if compute_pseudotime:
-            console.print(f"📊 Pseudotime computed for trajectory analysis")
+            console.print("📊 Pseudotime computed for trajectory analysis")
 
     except Exception as e:
         console.print(f"❌ [red]Error during PAGA analysis: {e}[/red]")
@@ -292,7 +292,7 @@ def pipeline(
     with biologically validated parameters and comprehensive reporting.
     """
     console.print(
-        f"🚀 [bold blue]Starting complete single-cell pipeline...[/bold blue]"
+        "🚀 [bold blue]Starting complete single-cell pipeline...[/bold blue]"
     )
 
     try:
@@ -302,7 +302,7 @@ def pipeline(
 
         # Run pipeline
         console.print("🚀 Running complete pipeline...")
-        pipeline_results = analyzer.run_complete_pipeline(
+        analyzer.run_complete_pipeline(
             input_file=input_file,
             output_dir=output_dir,
             config_file=config_file,
@@ -312,7 +312,7 @@ def pipeline(
             skip_trajectories=skip_trajectories,
         )
 
-        console.print(f"✅ [green]Complete pipeline finished![/green]")
+        console.print("✅ [green]Complete pipeline finished![/green]")
         console.print(f"📂 Results saved to: [cyan]{output_dir}[/cyan]")
 
     except Exception as e:
