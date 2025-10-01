@@ -31,15 +31,16 @@ def suppress_specific_warnings():
     warnings.filterwarnings("ignore", message=".*pandas.*dtype.*", category=FutureWarning)
     # Don't suppress all scanpy warnings - use context manager for specific cases
 
-def contextual_warning_suppression():
-    """Context manager for suppressing warnings in specific code blocks"""
-    return warnings.catch_warnings()
+
 
 suppress_specific_warnings()
 
 # Add project root to path for imports
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
+
+# Module-level constants
+AGE_THRESHOLD = 50  # Default age threshold for young/old stratification
 
 
 def _emit_report(name: str, payload: dict, metadata: Optional[dict] = None) -> Optional[str]:
@@ -202,7 +203,17 @@ def _normalize_bulk_rnaseq(data: pd.DataFrame, method: str = "auto") -> Tuple[pd
             qc_metrics["normalization"] = "CPM_proxy_for_TPM"
     elif method == "cpm_log1p":
         # CPM + log1p for count data
-        lib_size = data_filtered.sum(axis=genes_axis).replace(0, np.nan)
+        lib_size = data_filtered.sum(axis=genes_axis)
+        zero_lib_mask = (lib_size == 0)
+        
+        if zero_lib_mask.any():
+            qc_metrics["zero_library_samples"] = int(zero_lib_mask.sum())
+            print(f"   ⚠️  Warning: {zero_lib_mask.sum()} samples have zero library size")
+            # Replace zero libraries with NaN for CPM calculation
+            lib_size = lib_size.replace(0, np.nan)
+        else:
+            qc_metrics["zero_library_samples"] = 0
+            
         cpm = data_filtered.div(lib_size, axis=samples_axis) * 1e6
         normalized = np.log1p(cpm)
         qc_metrics["normalization"] = "CPM_log1p"
@@ -224,6 +235,13 @@ def _normalize_bulk_rnaseq(data: pd.DataFrame, method: str = "auto") -> Tuple[pd
     qc_metrics["has_infinite_values"] = np.isinf(normalized).any().any()
     qc_metrics["has_nan_values"] = normalized.isnull().any().any()
     
+    # Memory optimization for large matrices
+    if normalized.shape[0] * normalized.shape[1] > 1e6:  # > 1M elements
+        normalized = normalized.astype("float32")
+        qc_metrics["memory_optimized"] = "converted_to_float32"
+    else:
+        qc_metrics["memory_optimized"] = "kept_float64"
+    
     return normalized, qc_metrics
 
 
@@ -238,8 +256,14 @@ def _perform_multiple_testing_correction(pvalues: np.ndarray, method: str = "fdr
     Returns:
         Corrected p-values and rejection mask
     """
+    # Check for newer SciPy FDR function availability
     try:
-        from scipy.stats import false_discovery_control
+        from scipy.stats import false_discovery_control  # type: ignore
+        HAVE_SCIPY_FDR = True
+    except (ImportError, AttributeError):
+        HAVE_SCIPY_FDR = False
+    
+    try:
         from statsmodels.stats.multitest import multipletests
         
         # Remove NaN values
@@ -251,11 +275,15 @@ def _perform_multiple_testing_correction(pvalues: np.ndarray, method: str = "fdr
         
         # Apply correction
         if method == "fdr_bh":
-            try:
-                corrected = false_discovery_control(valid_pvals, method='bh')
-                rejected = corrected < 0.05
-            except:
-                # Fallback to statsmodels
+            if HAVE_SCIPY_FDR:
+                try:
+                    corrected = false_discovery_control(valid_pvals, method='bh')
+                    rejected = corrected < 0.05
+                except Exception:
+                    # Fallback to statsmodels
+                    rejected, corrected, _, _ = multipletests(valid_pvals, method='fdr_bh')
+            else:
+                # Use statsmodels directly
                 rejected, corrected, _, _ = multipletests(valid_pvals, method='fdr_bh')
         elif method == "bonferroni":
             rejected, corrected, _, _ = multipletests(valid_pvals, method='bonferroni')
@@ -980,6 +1008,12 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
     print("✅ Age-stratified statistical analysis")
     print("✅ Biologically validated methodology")
     print("-" * 55)
+    
+    # Initialize report metadata early to prevent NameError
+    report_metadata: Dict[str, Any] = {
+        "differential_expression": None,
+        "confidence_interval_mean": None
+    }
 
     try:
         import os
@@ -1188,7 +1222,7 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
 
                 # Age-stratified analysis with proper statistics
                 age_stats = _compute_age_stratified_statistics(
-                    valid_scores, valid_ages, age_threshold=50
+                    valid_scores, valid_ages, age_threshold=AGE_THRESHOLD
                 )
                 
                 if "error" not in age_stats:
@@ -1202,7 +1236,7 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
                     print(f"   📊 Mann-Whitney: p={age_stats['mann_whitney']['pvalue']:.3g}, "
                           f"corrected_p={age_stats['mann_whitney']['corrected_pvalue']:.3g}, "
                           f"significant={age_stats['mann_whitney']['significant']}")
-                    print(f"   � Effect size (Cohen's d): {age_stats['effect_size']:.3f}")
+                    print(f"   📐 Effect size (Cohen's d): {age_stats['effect_size']:.3f}")
                 else:
                     print(f"   ⚠️  Age-stratified analysis failed: {age_stats['error']}")
                 
@@ -1210,7 +1244,7 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
                 if "error" not in age_stats:
                     print("🧬 Performing FDR-corrected differential expression analysis...")
                     age_groups = pd.Series(
-                        ["young" if age < age_threshold else "old" for age in valid_ages],
+                        ["young" if age < AGE_THRESHOLD else "old" for age in valid_ages],
                         index=expr_data.index[valid_mask]
                     )
                     
@@ -1221,8 +1255,8 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
                     if de_results is not None:
                         # Store DE results for report
                         report_metadata["differential_expression"] = {
-                            "n_genes_tested": len(de_results),
-                            "n_significant": de_results['significant'].sum(),
+                            "n_genes_tested": int(len(de_results)),
+                            "n_significant": int(de_results['significant'].sum()),
                             "top_genes": de_results.head(10)[['pvalue', 'qvalue', 'log2fc']].to_dict()
                         }
             else:
@@ -1349,7 +1383,9 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
             "expression_data": expr_data,
             "sample_metadata": metadata_df,
         }
-        report_metadata = {
+        
+        # Update report metadata with final analysis results
+        report_metadata.update({
             "dataset_name": data_path.split("/")[-1]
             if isinstance(data_path, str)
             else "Generated Dataset",
@@ -1382,7 +1418,7 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
             "validated_biomarkers": biomarkers,
             "total_reference_biomarkers": total_biomarkers,
             "biomarker_categories": list(biomarkers.keys()),
-        }
+        })
 
         report_path = _emit_report(report_name, payload, report_metadata)
 
