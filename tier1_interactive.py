@@ -179,6 +179,8 @@ def _normalize_bulk_rnaseq(data: pd.DataFrame, method: str = "auto") -> Tuple[pd
     # Auto-detect if normalization is needed
     if method == "auto":
         max_val = data_filtered.max().max()
+        # Note: Integer-fraction heuristic works well for typical count data,
+        # but may overestimate "integer-ness" on very sparse floats
         integer_frac = (data_filtered.round() == data_filtered).mean().mean()
         values_in_0_1 = ((data_filtered >= 0) & (data_filtered <= 1.5)).mean().mean()
         
@@ -225,9 +227,19 @@ def _normalize_bulk_rnaseq(data: pd.DataFrame, method: str = "auto") -> Tuple[pd
         
         # Remove samples with zero library size (all-NaN rows) to keep pipeline numerically clean
         if zero_lib_mask.any():
+            removed_samples = data_filtered.index[zero_lib_mask].tolist()
             normalized = normalized.loc[~zero_lib_mask]
             qc_metrics["samples_removed_due_to_zero_library"] = int(zero_lib_mask.sum())
+            # Store sample IDs for reproducibility audits (limit to first 10 for brevity)
+            qc_metrics["removed_sample_ids"] = removed_samples[:10]
+            if len(removed_samples) > 10:
+                qc_metrics["removed_sample_ids_truncated"] = True
+                qc_metrics["total_removed_samples"] = len(removed_samples)
             print(f"   🗑️  Removed {zero_lib_mask.sum()} samples with zero library size")
+            if len(removed_samples) <= 5:
+                print(f"   📋 Removed samples: {', '.join(removed_samples)}")
+            else:
+                print(f"   📋 Removed samples (first 5): {', '.join(removed_samples[:5])}...")
         else:
             qc_metrics["samples_removed_due_to_zero_library"] = 0
             
@@ -459,7 +471,7 @@ def _compute_cohens_d(group1: np.ndarray, group2: np.ndarray) -> float:
 
 
 def _compute_age_stratified_statistics(scores: np.ndarray, ages: np.ndarray, 
-                                     age_threshold: float = 50) -> Dict[str, Any]:
+                                     age_threshold: float = 50, alpha: float = 0.05) -> Dict[str, Any]:
     """
     Perform age-stratified analysis with proper statistical testing.
     
@@ -499,7 +511,7 @@ def _compute_age_stratified_statistics(scores: np.ndarray, ages: np.ndarray,
         
         # Multiple testing correction
         pvals = np.array([t_pval, u_pval])
-        corrected_pvals, rejected = _perform_multiple_testing_correction(pvals, method="fdr_bh", alpha=0.05)
+        corrected_pvals, rejected = _perform_multiple_testing_correction(pvals, method="fdr_bh", alpha=alpha)
         
         results = {
             "n_young": len(young_scores),
@@ -1283,7 +1295,7 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
 
                 # Age-stratified analysis with proper statistics
                 age_stats = _compute_age_stratified_statistics(
-                    valid_scores, valid_ages, age_threshold=AGE_THRESHOLD
+                    valid_scores, valid_ages, age_threshold=AGE_THRESHOLD, alpha=0.05
                 )
                 
                 if "error" not in age_stats:
