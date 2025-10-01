@@ -19,7 +19,7 @@ import os
 import sys
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple
 
 import numpy as np
 import pandas as pd
@@ -179,11 +179,16 @@ def _normalize_bulk_rnaseq(data: pd.DataFrame, method: str = "auto") -> Tuple[pd
     if method == "auto":
         max_val = data_filtered.max().max()
         integer_frac = (data_filtered.round() == data_filtered).mean().mean()
+        values_in_0_1 = ((data_filtered >= 0) & (data_filtered <= 1.5)).mean().mean()
         
         if max_val > 50 and integer_frac > 0.7:
             # Looks like raw counts - apply CPM + log1p
             method = "cpm_log1p"
             qc_metrics["auto_detection"] = "detected_counts"
+        elif max_val < 1.5 and values_in_0_1 > 0.8:
+            # Looks like log-transformed data - don't double-transform
+            method = "none"
+            qc_metrics["auto_detection"] = "detected_log_transformed"
         elif max_val < 20 and integer_frac < 0.3:
             # Looks like already normalized - minimal processing
             method = "none" 
@@ -245,13 +250,14 @@ def _normalize_bulk_rnaseq(data: pd.DataFrame, method: str = "auto") -> Tuple[pd
     return normalized, qc_metrics
 
 
-def _perform_multiple_testing_correction(pvalues: np.ndarray, method: str = "fdr_bh") -> Tuple[np.ndarray, np.ndarray]:
+def _perform_multiple_testing_correction(pvalues: np.ndarray, method: str = "fdr_bh", alpha: float = 0.05) -> Tuple[np.ndarray, np.ndarray]:
     """
     Perform multiple testing correction with proper NaN handling.
     
     Args:
         pvalues: Array of p-values
         method: Correction method ('fdr_bh', 'bonferroni', 'fdr_by')
+        alpha: Significance threshold for rejection
     
     Returns:
         Corrected p-values and rejection mask
@@ -273,25 +279,25 @@ def _perform_multiple_testing_correction(pvalues: np.ndarray, method: str = "fdr
         if len(valid_pvals) == 0:
             return pvalues, np.zeros(len(pvalues), dtype=bool)
         
-        # Apply correction
+        # Apply correction with proper alpha handling
         if method == "fdr_bh":
             if HAVE_SCIPY_FDR:
                 try:
                     corrected = false_discovery_control(valid_pvals, method='bh')
-                    rejected = corrected < 0.05
+                    rejected = corrected < alpha
                 except Exception:
                     # Fallback to statsmodels
-                    rejected, corrected, _, _ = multipletests(valid_pvals, method='fdr_bh')
+                    rejected, corrected, _, _ = multipletests(valid_pvals, alpha=alpha, method='fdr_bh')
             else:
                 # Use statsmodels directly
-                rejected, corrected, _, _ = multipletests(valid_pvals, method='fdr_bh')
+                rejected, corrected, _, _ = multipletests(valid_pvals, alpha=alpha, method='fdr_bh')
         elif method == "bonferroni":
-            rejected, corrected, _, _ = multipletests(valid_pvals, method='bonferroni')
+            rejected, corrected, _, _ = multipletests(valid_pvals, alpha=alpha, method='bonferroni')
         elif method == "fdr_by":
-            rejected, corrected, _, _ = multipletests(valid_pvals, method='fdr_by')
+            rejected, corrected, _, _ = multipletests(valid_pvals, alpha=alpha, method='fdr_by')
         else:
             corrected = valid_pvals
-            rejected = valid_pvals < 0.05
+            rejected = valid_pvals < alpha
         
         # Reconstruct full arrays
         full_corrected = np.full_like(pvalues, np.nan)
@@ -304,7 +310,7 @@ def _perform_multiple_testing_correction(pvalues: np.ndarray, method: str = "fdr
         
     except ImportError:
         # No scipy/statsmodels - return uncorrected
-        return pvalues, pvalues < 0.05
+        return pvalues, pvalues < alpha
 
 
 def _fdr_differential_expression(expr_df: pd.DataFrame, groups: pd.Series, alpha: float = 0.05) -> Optional[pd.DataFrame]:
@@ -375,19 +381,31 @@ def _fdr_differential_expression(expr_df: pd.DataFrame, groups: pd.Series, alpha
         valid_pvals = results_df['pvalue'].dropna()
         if len(valid_pvals) > 0:
             corrected_pvals, rejected = _perform_multiple_testing_correction(
-                results_df['pvalue'].values, method='fdr_bh'
+                results_df['pvalue'].values, method='fdr_bh', alpha=alpha
             )
             results_df['qvalue'] = corrected_pvals
             results_df['significant'] = rejected
+            
+            # Track which correction method was used
+            try:
+                from scipy.stats import false_discovery_control
+                mt_engine = "scipy"
+            except ImportError:
+                try:
+                    from statsmodels.stats.multitest import multipletests
+                    mt_engine = "statsmodels"
+                except ImportError:
+                    mt_engine = "none"
         else:
             results_df['qvalue'] = np.nan
             results_df['significant'] = False
+            mt_engine = "no_data"
         
         # Sort by q-value
         results_df = results_df.sort_values('qvalue')
         
         n_sig = results_df['significant'].sum()
-        print(f"   📊 DE genes: {n_sig}/{len(results_df)} significant (FDR < {alpha})")
+        print(f"   📊 DE genes: {n_sig}/{len(results_df)} significant (FDR < {alpha}, engine: {mt_engine})")
         
         return results_df
         
@@ -397,6 +415,37 @@ def _fdr_differential_expression(expr_df: pd.DataFrame, groups: pd.Series, alpha
     except Exception as e:
         print(f"   ❌ DE analysis failed: {e}")
         return None
+
+
+def _compute_cohens_d(group1: np.ndarray, group2: np.ndarray) -> float:
+    """
+    Compute Cohen's d effect size with unbiased pooled standard deviation.
+    
+    Args:
+        group1: First group scores
+        group2: Second group scores
+        
+    Returns:
+        Cohen's d effect size
+    """
+    n1, n2 = len(group1), len(group2)
+    
+    if n1 <= 1 or n2 <= 1:
+        return np.nan
+    
+    # Sample means
+    m1, m2 = np.mean(group1), np.mean(group2)
+    
+    # Sample variances with Bessel's correction (ddof=1)
+    s1_sq, s2_sq = np.var(group1, ddof=1), np.var(group2, ddof=1)
+    
+    # Pooled standard deviation
+    pooled_sd = np.sqrt(((n1 - 1) * s1_sq + (n2 - 1) * s2_sq) / (n1 + n2 - 2))
+    
+    # Cohen's d
+    d = (m2 - m1) / pooled_sd
+    
+    return d
 
 
 def _compute_age_stratified_statistics(scores: np.ndarray, ages: np.ndarray, 
@@ -440,7 +489,7 @@ def _compute_age_stratified_statistics(scores: np.ndarray, ages: np.ndarray,
         
         # Multiple testing correction
         pvals = np.array([t_pval, u_pval])
-        corrected_pvals, rejected = _perform_multiple_testing_correction(pvals, "fdr_bh")
+        corrected_pvals, rejected = _perform_multiple_testing_correction(pvals, method="fdr_bh", alpha=0.05)
         
         results = {
             "n_young": len(young_scores),
@@ -461,8 +510,7 @@ def _compute_age_stratified_statistics(scores: np.ndarray, ages: np.ndarray,
                 "corrected_pvalue": float(corrected_pvals[1]),
                 "significant": bool(rejected[1])
             },
-            "effect_size": float((np.mean(old_scores) - np.mean(young_scores)) / 
-                               np.sqrt((np.var(young_scores) + np.var(old_scores)) / 2)),
+            "effect_size": float(_compute_cohens_d(young_scores, old_scores)),
             "age_threshold": age_threshold
         }
         
@@ -738,28 +786,28 @@ def _get_validated_aging_biomarkers() -> Dict[str, List[str]]:
     """
     return {
         "cellular_senescence": [
-            "CDKN2A", "CDKN1A", "TP53", "RB1", "SASP_IL6", "SASP_IL1B"
+            "CDKN2A", "CDKN1A", "TP53", "RB1", "IL6", "IL1B"  # Fixed: removed SASP_ prefixes
         ],
         "dna_damage_repair": [
             "ATM", "BRCA1", "BRCA2", "XRCC1", "PARP1", "H2AFX"
         ],
         "mitochondrial_function": [
-            "SIRT1", "SIRT3", "PGC1A", "NRF1", "TFAM", "COX4I1"
+            "SIRT1", "SIRT3", "PPARGC1A", "NRF1", "TFAM", "COX4I1"  # Fixed: PGC1A -> PPARGC1A
         ],
         "telomere_maintenance": [
-            "TERT", "TERC", "TRF2", "POT1", "TINF2"
+            "TERT", "TERC", "TERF2", "POT1", "TINF2"  # Fixed: TRF2 -> TERF2
         ],
         "autophagy_proteostasis": [
-            "ATG5", "ATG7", "BECN1", "LC3B", "SQSTM1", "HSPA1A"
+            "ATG5", "ATG7", "BECN1", "MAP1LC3B", "SQSTM1", "HSPA1A"  # Fixed: LC3B -> MAP1LC3B
         ],
         "inflammation_immunity": [
-            "TNF", "IL6", "IL1B", "CXCL1", "CCL2", "NLRP3"
+            "TNF", "CXCL1", "CCL2", "NLRP3", "NFKB1", "STAT3"  # Removed IL6/IL1B duplicates, added unique genes
         ],
         "metabolic_pathways": [
-            "AMPK", "MTOR", "FOXO1", "FOXO3", "IGF1", "INS"
+            "PRKAA1", "MTOR", "FOXO1", "FOXO3", "IGF1", "INS"  # Fixed: AMPK -> PRKAA1 (catalytic subunit)
         ],
         "epigenetic_regulators": [
-            "DNMT1", "DNMT3A", "TET1", "TET2", "HDAC1", "SIRT1"
+            "DNMT1", "DNMT3A", "TET1", "TET2", "HDAC1", "SIRT2"  # Fixed: removed SIRT1 duplicate
         ]
     }
 
@@ -1192,6 +1240,9 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         print(f"📊 Standard deviation: {np.nanstd(scores):.3f}")
         print(f"🧬 Reference biomarker panel: {total_biomarkers} genes across {len(biomarkers)} categories")
 
+        # Initialize age_stats to prevent UnboundLocalError
+        age_stats: Optional[Dict[str, Any]] = None
+
         # Add scientific calibration metrics with proper statistics
         print("\n🔬 SCIENTIFIC VALIDATION METRICS:")
         norm = _test_normality(scores)
@@ -1412,7 +1463,7 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
             "data_orientation_corrected": qc_metrics['orientation'],
             # Statistical validation
             "normality_test": norm,
-            "age_statistics": age_stats if metadata_df is not None and "age" in metadata_df.columns else None,
+            "age_statistics": age_stats,
             "multiple_testing_correction": "FDR-BH" if metadata_df is not None else "Not applicable",
             # Biomarker validation
             "validated_biomarkers": biomarkers,
