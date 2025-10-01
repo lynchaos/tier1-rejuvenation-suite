@@ -29,7 +29,11 @@ def suppress_specific_warnings():
     """Suppress only known noisy warnings while preserving important ones"""
     warnings.filterwarnings("ignore", message=".*anndata.*", category=FutureWarning)
     warnings.filterwarnings("ignore", message=".*pandas.*dtype.*", category=FutureWarning)
-    warnings.filterwarnings("ignore", message=".*scanpy.*neighbors.*", category=UserWarning)
+    # Don't suppress all scanpy warnings - use context manager for specific cases
+
+def contextual_warning_suppression():
+    """Context manager for suppressing warnings in specific code blocks"""
+    return warnings.catch_warnings()
 
 suppress_specific_warnings()
 
@@ -56,76 +60,104 @@ def _emit_report(name: str, payload: dict, metadata: Optional[dict] = None) -> O
 
 
 def _test_normality(scores: np.ndarray) -> Dict[str, Any]:
-    """Return dict of normality diagnostics with proper NaN handling."""
-    # Remove NaN values before analysis
-    clean_scores = scores[~np.isnan(scores)]
-    
-    if len(clean_scores) == 0:
-        return {
-            "method": "insufficient_data",
-            "pvalue": np.nan,
-            "skew": np.nan,
-            "kurtosis": np.nan,
-            "n_valid": 0
-        }
-    
-    series = pd.Series(clean_scores)
-    skew_val = series.skew()
-    kurt_val = series.kurt()
+    """Return dict of normality diagnostics with robust NaN/inf handling."""
+    # Convert to series and handle NaN/inf values
+    s = pd.Series(scores).replace([np.inf, -np.inf], np.nan).dropna()
     
     out: Dict[str, Any] = {
+        "n": int(s.size),
+        "n_removed": len(scores) - int(s.size),
         "method": None,
         "pvalue": np.nan,
-        "skew": float(skew_val) if pd.notna(skew_val) else 0.0,
-        "kurtosis": float(kurt_val) if pd.notna(kurt_val) else 0.0,
-        "n_valid": len(clean_scores),
-        "n_removed": len(scores) - len(clean_scores)
+        "skew": float(s.skew()) if s.size > 1 else np.nan,
+        "kurtosis": float(s.kurtosis()) if s.size > 1 else np.nan
     }
+    
+    if s.size == 0:
+        out["method"] = "no_valid_data"
+        return out
+    elif s.size < 3:
+        out["method"] = "insufficient_n"
+        return out
     
     try:
         from scipy.stats import normaltest, shapiro
 
-        if len(clean_scores) >= 8:
+        if s.size >= 8:
             out["method"] = "dagostino_pearson"
-            stat, p = normaltest(clean_scores)
-        elif len(clean_scores) >= 3:
-            out["method"] = "shapiro_wilk"
-            stat, p = shapiro(clean_scores)
+            _, out["pvalue"] = normaltest(s.values)
         else:
-            out["method"] = "insufficient_data"
-            return out
+            out["method"] = "shapiro_wilk"
+            _, out["pvalue"] = shapiro(s.values)
             
-        out["pvalue"] = float(p)
-        return out
+        out["pvalue"] = float(out["pvalue"])
+        
+    except ImportError:
+        out["method"] = "scipy_not_available"
     except Exception as e:
-        # SciPy not available or failed; return descriptive stats only
-        out["method"] = f"skew_kurtosis_only_error_{type(e).__name__}"
-        return out
+        out["method"] = f"test_failed_{type(e).__name__}"
+        
+    return out
 
 
-def _normalize_bulk_rnaseq(data: pd.DataFrame, method: str = "tpm") -> Tuple[pd.DataFrame, Dict[str, Any]]:
+def _normalize_bulk_rnaseq(data: pd.DataFrame, method: str = "auto") -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
-    Normalize bulk RNA-seq data with proper QC metrics.
+    Normalize bulk RNA-seq data with proper QC metrics and robust axis detection.
     
     Args:
         data: Raw count matrix (samples x genes or genes x samples)
-        method: Normalization method ('tpm', 'cpm', 'log1p', 'vst')
+        method: Normalization method ('auto', 'cpm', 'log1p', 'vst', 'none')
     
     Returns:
         Normalized data and QC metrics
     """
     qc_metrics = {}
     
-    # Auto-detect orientation (samples should be rows for most ML pipelines)
-    if data.shape[0] > data.shape[1]:
-        # More rows than columns - likely samples x genes (correct)
-        samples_axis, genes_axis = 0, 1
-        qc_metrics["orientation"] = "samples_x_genes"
-    else:
-        # More columns than rows - likely genes x samples (transpose needed)
+    # Smart axis detection using multiple heuristics
+    def _detect_genes_as_rows(df):
+        """Heuristic to detect if genes are rows (need transpose)"""
+        reasons = []
+        
+        # 1. Gene-like identifiers in index
+        gene_patterns = ['ENSG', 'ENSM', 'GENE_', 'Gene', 'gene', 'SYMBOL']
+        if any(pattern in str(df.index.name) or 
+               any(pattern in str(idx) for idx in df.index[:10]) 
+               for pattern in gene_patterns):
+            reasons.append("gene_identifiers_in_index")
+        
+        # 2. Sample-like identifiers in columns
+        sample_patterns = ['Sample_', 'SAMPLE_', 'sample', 'Patient', 'Subject']
+        if any(pattern in str(df.columns.name) or 
+               any(pattern in str(col) for col in df.columns[:10]) 
+               for pattern in sample_patterns):
+            reasons.append("sample_identifiers_in_columns")
+        
+        # 3. Shape heuristic: typically many more genes than samples
+        if df.shape[0] > df.shape[1] and df.shape[0] > 1000:
+            reasons.append("many_rows_suggest_genes")
+        
+        # 4. Value distribution: genes usually have more zeros
+        if df.shape[0] > 10 and df.shape[1] > 10:
+            row_zeros = (df == 0).sum(axis=1).mean()
+            col_zeros = (df == 0).sum(axis=0).mean() 
+            if row_zeros > col_zeros * 1.5:
+                reasons.append("row_sparsity_suggests_genes")
+        
+        return len(reasons) >= 2, reasons
+    
+    # Apply detection
+    genes_are_rows, detection_reasons = _detect_genes_as_rows(data)
+    
+    if genes_are_rows:
+        print(f"ℹ️  Detected genes as rows (reasons: {', '.join(detection_reasons)}); transposing to [samples x genes]")
         data = data.T
         samples_axis, genes_axis = 0, 1
         qc_metrics["orientation"] = "genes_x_samples_transposed"
+        qc_metrics["detection_reasons"] = detection_reasons
+    else:
+        samples_axis, genes_axis = 0, 1
+        qc_metrics["orientation"] = "samples_x_genes"
+        qc_metrics["detection_reasons"] = ["samples_as_rows_assumed"]
     
     qc_metrics["n_samples"] = data.shape[samples_axis]
     qc_metrics["n_genes"] = data.shape[genes_axis]
@@ -142,15 +174,38 @@ def _normalize_bulk_rnaseq(data: pd.DataFrame, method: str = "tpm") -> Tuple[pd.
     data_filtered = data.loc[:, expressed_genes] if expressed_genes.any() else data
     qc_metrics["genes_filtered"] = (~expressed_genes).sum()
     
+    # Auto-detect if normalization is needed
+    if method == "auto":
+        max_val = data_filtered.max().max()
+        integer_frac = (data_filtered.round() == data_filtered).mean().mean()
+        
+        if max_val > 50 and integer_frac > 0.7:
+            # Looks like raw counts - apply CPM + log1p
+            method = "cpm_log1p"
+            qc_metrics["auto_detection"] = "detected_counts"
+        elif max_val < 20 and integer_frac < 0.3:
+            # Looks like already normalized - minimal processing
+            method = "none" 
+            qc_metrics["auto_detection"] = "detected_normalized"
+        else:
+            # Uncertain - apply log1p for safety
+            method = "log1p"
+            qc_metrics["auto_detection"] = "uncertain_applied_log1p"
+    
     # Apply normalization
-    if method == "tpm":
-        # TPM normalization (assuming gene lengths not available, use CPM)
-        normalized = data_filtered.div(data_filtered.sum(axis=genes_axis), axis=samples_axis) * 1e6
-        qc_metrics["normalization"] = "CPM_proxy_for_TPM"
-    elif method == "cpm":
-        # Counts per million
-        normalized = data_filtered.div(data_filtered.sum(axis=genes_axis), axis=samples_axis) * 1e6
+    if method in ["tpm", "cpm"]:
+        # CPM normalization (TPM proxy without gene lengths)
+        lib_size = data_filtered.sum(axis=genes_axis).replace(0, np.nan)
+        normalized = data_filtered.div(lib_size, axis=samples_axis) * 1e6
         qc_metrics["normalization"] = "CPM"
+        if method == "tpm":
+            qc_metrics["normalization"] = "CPM_proxy_for_TPM"
+    elif method == "cpm_log1p":
+        # CPM + log1p for count data
+        lib_size = data_filtered.sum(axis=genes_axis).replace(0, np.nan)
+        cpm = data_filtered.div(lib_size, axis=samples_axis) * 1e6
+        normalized = np.log1p(cpm)
+        qc_metrics["normalization"] = "CPM_log1p"
     elif method == "log1p":
         # Log1p transformation
         normalized = np.log1p(data_filtered)
@@ -222,6 +277,98 @@ def _perform_multiple_testing_correction(pvalues: np.ndarray, method: str = "fdr
     except ImportError:
         # No scipy/statsmodels - return uncorrected
         return pvalues, pvalues < 0.05
+
+
+def _fdr_differential_expression(expr_df: pd.DataFrame, groups: pd.Series, alpha: float = 0.05) -> Optional[pd.DataFrame]:
+    """
+    Perform FDR-corrected differential expression analysis between two groups.
+    
+    Args:
+        expr_df: Expression data (samples x genes)
+        groups: Group labels (should have exactly 2 unique values)
+        alpha: Significance threshold for FDR
+    
+    Returns:
+        DataFrame with genes, p-values, q-values, and significance
+    """
+    try:
+        from scipy.stats import ranksums
+        
+        groups = groups.astype(str)
+        unique_groups = groups.unique()
+        
+        if len(unique_groups) != 2:
+            print(f"   ⚠️  Need exactly 2 groups for DE analysis, got {len(unique_groups)}")
+            return None
+        
+        # Split data by groups
+        g1_mask = groups == unique_groups[0]
+        g2_mask = groups == unique_groups[1]
+        
+        g1_data = expr_df.loc[g1_mask]
+        g2_data = expr_df.loc[g2_mask]
+        
+        print(f"   🧬 DE analysis: {unique_groups[0]} (n={g1_mask.sum()}) vs {unique_groups[1]} (n={g2_mask.sum()})")
+        
+        # Test each gene
+        results = []
+        for gene in expr_df.columns:
+            try:
+                g1_vals = g1_data[gene].dropna()
+                g2_vals = g2_data[gene].dropna()
+                
+                if len(g1_vals) < 3 or len(g2_vals) < 3:
+                    stat, pval = np.nan, np.nan
+                else:
+                    stat, pval = ranksums(g1_vals.values, g2_vals.values)
+                    
+                results.append({
+                    'gene': gene,
+                    'statistic': stat,
+                    'pvalue': pval,
+                    'mean_g1': g1_vals.mean(),
+                    'mean_g2': g2_vals.mean(),
+                    'log2fc': np.log2((g2_vals.mean() + 1e-8) / (g1_vals.mean() + 1e-8))
+                })
+            except Exception:
+                results.append({
+                    'gene': gene,
+                    'statistic': np.nan,
+                    'pvalue': np.nan,
+                    'mean_g1': np.nan,
+                    'mean_g2': np.nan,
+                    'log2fc': np.nan
+                })
+        
+        # Convert to DataFrame and apply FDR correction
+        results_df = pd.DataFrame(results).set_index('gene')
+        
+        # FDR correction on valid p-values
+        valid_pvals = results_df['pvalue'].dropna()
+        if len(valid_pvals) > 0:
+            corrected_pvals, rejected = _perform_multiple_testing_correction(
+                results_df['pvalue'].values, method='fdr_bh'
+            )
+            results_df['qvalue'] = corrected_pvals
+            results_df['significant'] = rejected
+        else:
+            results_df['qvalue'] = np.nan
+            results_df['significant'] = False
+        
+        # Sort by q-value
+        results_df = results_df.sort_values('qvalue')
+        
+        n_sig = results_df['significant'].sum()
+        print(f"   📊 DE genes: {n_sig}/{len(results_df)} significant (FDR < {alpha})")
+        
+        return results_df
+        
+    except ImportError:
+        print("   ⚠️  SciPy not available for DE analysis")
+        return None
+    except Exception as e:
+        print(f"   ❌ DE analysis failed: {e}")
+        return None
 
 
 def _compute_age_stratified_statistics(scores: np.ndarray, ages: np.ndarray, 
@@ -591,14 +738,53 @@ def _get_validated_aging_biomarkers() -> Dict[str, List[str]]:
 
 def download_geo_dataset(dataset_info: Dict, data_dir: Path) -> Optional[str]:
     """
-    Download GEO dataset metadata.
+    Download GEO dataset metadata and generate synthetic expression data.
     
-    Note: Currently generates synthetic data as GEO datasets are not 
-    included in the available dataset list. This function exists for 
-    API completeness but is not reachable through the current menu system.
+    Note: This is a demo implementation that downloads real GEO metadata
+    but generates synthetic expression data for analysis purposes.
     """
-    print("ℹ️  GEO download not implemented - generating synthetic data instead")
-    return generate_sample_dataset(dataset_info, data_dir)
+    import urllib.request
+    import gzip
+    
+    geo_id = dataset_info["geo_id"]
+    print(f"🔄 Downloading GEO metadata for {geo_id}...")
+    
+    try:
+        # Download SOFT file
+        url = f"https://ftp.ncbi.nlm.nih.gov/geo/series/{geo_id[:6]}nnn/{geo_id}/soft/{geo_id}_family.soft.gz"
+        soft_file = data_dir / f"{geo_id}_family.soft.gz"
+        
+        urllib.request.urlretrieve(url, soft_file)
+        print(f"✅ Downloaded GEO metadata: {soft_file}")
+        
+        # Parse basic info from SOFT file
+        sample_count = 0
+        with gzip.open(soft_file, 'rt') as f:
+            for line in f:
+                if line.startswith('^SAMPLE'):
+                    sample_count += 1
+                if sample_count > 0 and line.startswith('!Sample_'):
+                    # Found sample info - we could parse more metadata here
+                    pass
+                if sample_count >= 200:  # Limit parsing for demo
+                    break
+        
+        print(f"ℹ️  Found ~{sample_count} samples in GEO metadata")
+        print("🧬 Generating synthetic expression data based on metadata...")
+        
+        # Generate synthetic expression data with realistic sample count
+        synthetic_info = {
+            "type": "bulk_rnaseq",
+            "n_samples": min(sample_count, 100) if sample_count > 0 else 50,
+            "n_features": 2000
+        }
+        
+        return generate_sample_dataset(synthetic_info, data_dir)
+        
+    except Exception as e:
+        print(f"❌ GEO download failed: {e}")
+        print("🔄 Falling back to synthetic data generation...")
+        return generate_sample_dataset(dataset_info, data_dir)
 
 
 def generate_sample_dataset(dataset_info: Dict, data_dir: Path) -> Optional[str]:
@@ -742,6 +928,15 @@ def get_available_datasets() -> Dict[str, List[Dict]]:
                 "n_samples": 200,
                 "n_features": 2000,
             },
+            {
+                "name": "GEO: GSE72056 (Melanoma metadata - DEMO)",
+                "description": "Downloads SOFT family file for metadata parsing demo",
+                "size": "~10 MB",
+                "type": "bulk_rnaseq", 
+                "method": "geo",
+                "geo_id": "GSE72056",
+                "note": "Generates synthetic expression data for demo purposes"
+            },
         ],
         "multi_omics": [
             {
@@ -846,8 +1041,8 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         print(f"✅ Loaded raw expression data: {expr_data.shape}")
         print("🔬 Applying scientific normalization and QC...")
         
-        # Apply proper bulk RNA-seq normalization
-        normalized_data, qc_metrics = _normalize_bulk_rnaseq(expr_data, method="cpm")
+        # Apply smart bulk RNA-seq normalization with auto-detection
+        normalized_data, qc_metrics = _normalize_bulk_rnaseq(expr_data, method="auto")
         
         print(f"📊 QC Results:")
         print(f"   Data orientation: {qc_metrics['orientation']}")
@@ -977,16 +1172,23 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
               f"genes_filtered={qc_metrics['genes_filtered']}")
         
         if metadata_df is not None and "age" in metadata_df.columns:
-            # Clean age data for correlation
-            valid_idx = ~(np.isnan(scores) | metadata_df["age"].isnull())
-            if valid_idx.sum() > 1:
-                age_correlation = np.corrcoef(scores[valid_idx], 
-                                            metadata_df["age"].values[valid_idx])[0, 1]
-                print(f"   🧬 Age correlation: {age_correlation:.3f} (n={valid_idx.sum()})")
+            # Robust age correlation with proper NaN handling
+            age_series = pd.to_numeric(metadata_df["age"], errors="coerce")
+            scores_series = pd.Series(scores).replace([np.inf, -np.inf], np.nan)
+            
+            # Find valid observations for both variables
+            valid_mask = age_series.notna() & scores_series.notna() & np.isfinite(age_series) & np.isfinite(scores_series)
+            
+            if valid_mask.sum() > 1:
+                valid_ages = age_series[valid_mask].values
+                valid_scores = scores_series[valid_mask].values
+                
+                age_correlation = np.corrcoef(valid_scores, valid_ages)[0, 1]
+                print(f"   🧬 Age correlation: {age_correlation:.3f} (n={valid_mask.sum()}/{len(scores)} valid)")
 
                 # Age-stratified analysis with proper statistics
                 age_stats = _compute_age_stratified_statistics(
-                    scores, metadata_df["age"].values, age_threshold=50
+                    valid_scores, valid_ages, age_threshold=50
                 )
                 
                 if "error" not in age_stats:
@@ -1003,8 +1205,30 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
                     print(f"   � Effect size (Cohen's d): {age_stats['effect_size']:.3f}")
                 else:
                     print(f"   ⚠️  Age-stratified analysis failed: {age_stats['error']}")
+                
+                # Perform differential expression analysis if we have age groups
+                if "error" not in age_stats:
+                    print("🧬 Performing FDR-corrected differential expression analysis...")
+                    age_groups = pd.Series(
+                        ["young" if age < age_threshold else "old" for age in valid_ages],
+                        index=expr_data.index[valid_mask]
+                    )
+                    
+                    de_results = _fdr_differential_expression(
+                        expr_data.loc[valid_mask], age_groups, alpha=0.05
+                    )
+                    
+                    if de_results is not None:
+                        # Store DE results for report
+                        report_metadata["differential_expression"] = {
+                            "n_genes_tested": len(de_results),
+                            "n_significant": de_results['significant'].sum(),
+                            "top_genes": de_results.head(10)[['pvalue', 'qvalue', 'log2fc']].to_dict()
+                        }
             else:
-                print("   ⚠️  Insufficient valid age data for correlation analysis")
+                n_invalid_age = age_series.isnull().sum()
+                n_invalid_scores = scores_series.isnull().sum() 
+                print(f"   ⚠️  Insufficient valid data for correlation (invalid ages: {n_invalid_age}, invalid scores: {n_invalid_scores})")
 
         # Compute confidence intervals using bootstrap
         print("🔄 Computing bootstrap confidence intervals...")
@@ -1070,31 +1294,44 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
             for category, count in category_counts.items():
                 print(f"   {category}: {count} samples")
 
-        # Show top rejuvenated samples
+        # Show top rejuvenated samples with robust numeric handling
         print("\n🏆 Top 5 rejuvenated samples:")
-        if score_col in result_df.columns and np.issubdtype(
-            result_df[score_col].dtype, np.number
-        ):
-            top_samples = result_df.dropna(subset=[score_col]).nlargest(5, score_col)
-            display_cols = [score_col]
-            if "rejuvenation_category" in result_df.columns:
-                display_cols.append("rejuvenation_category")
-            if is_corrected and "age_adjusted_score" in result_df.columns:
-                display_cols.append("age_adjusted_score")
+        if score_col in result_df.columns:
+            # Coerce scores to numeric, handling any dtype issues
+            score_numeric = pd.to_numeric(result_df[score_col], errors='coerce')
+            result_df_clean = result_df.copy()
+            result_df_clean[score_col] = score_numeric
+            
+            # Get top samples (only those with valid numeric scores)
+            valid_scores = result_df_clean.dropna(subset=[score_col])
+            
+            if len(valid_scores) > 0:
+                top_samples = valid_scores.nlargest(5, score_col)
+                display_cols = [score_col]
+                if "rejuvenation_category" in result_df.columns:
+                    display_cols.append("rejuvenation_category")
+                if is_corrected and "age_adjusted_score" in result_df.columns:
+                    display_cols.append("age_adjusted_score")
 
-            for idx, row in top_samples[display_cols].iterrows():
-                score_str = f"{row[score_col]:.3f}"
-                if len(display_cols) > 1:
-                    extra_info = " | ".join(
-                        [f"{col}: {row[col]}" for col in display_cols[1:]]
-                    )
-                    print(f"   {idx}: {score_str} | {extra_info}")
-                else:
-                    print(f"   {idx}: {score_str}")
+                for idx, row in top_samples[display_cols].iterrows():
+                    score_val = row[score_col]
+                    score_str = f"{score_val:.3f}" if pd.notna(score_val) else "N/A"
+                    
+                    if len(display_cols) > 1:
+                        extra_info = " | ".join(
+                            [f"{col}: {row[col]}" for col in display_cols[1:]]
+                        )
+                        print(f"   {idx}: {score_str} | {extra_info}")
+                    else:
+                        print(f"   {idx}: {score_str}")
+                
+                invalid_scores = len(result_df) - len(valid_scores)
+                if invalid_scores > 0:
+                    print(f"   ⚠️  {invalid_scores} samples had invalid scores and were excluded")
+            else:
+                print("⚠️  No samples with valid numeric scores found")
         else:
-            print(
-                "⚠️  Cannot compute top samples (score column missing or non-numeric)."
-            )
+            print(f"⚠️  Score column '{score_col}' not found in results")
 
         # Generate enhanced scientific report
         report_name = "RegenOmics (Corrected)" if is_corrected else "RegenOmics"
@@ -1322,27 +1559,43 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
         np.random.seed(42)
         os.environ["PYTHONHASHSEED"] = "42"
 
-        # Set PyTorch seed and deterministic behavior if available
+        # Set PyTorch seed and full deterministic behavior if available
         try:
             import torch
-
-            torch.manual_seed(42)
+            import os
             
-            if torch.cuda.is_available():
-                torch.cuda.manual_seed(42)
-                torch.cuda.manual_seed_all(42)
-                # Enable deterministic behavior (may impact performance)
-                torch.backends.cudnn.deterministic = True
-                torch.backends.cudnn.benchmark = False
+            # Set all seeds
+            torch.manual_seed(42)
             
             # Enable deterministic algorithms (PyTorch 1.8+)
             try:
                 torch.use_deterministic_algorithms(True)
-            except:
-                pass  # Older PyTorch version
+                print("   🎲 PyTorch deterministic algorithms: enabled")
+            except AttributeError:
+                print("   ⚠️  PyTorch version too old for deterministic algorithms")
+            except Exception as e:
+                print(f"   ⚠️  Could not enable deterministic algorithms: {e}")
+            
+            # CUDA settings if available
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed(42)
+                torch.cuda.manual_seed_all(42)
+                
+                # cuDNN deterministic settings
+                if hasattr(torch.backends, 'cudnn'):
+                    torch.backends.cudnn.deterministic = True
+                    torch.backends.cudnn.benchmark = False
+                    print("   🎲 cuDNN deterministic mode: enabled")
+                
+                print(f"   🎲 CUDA devices seeded: {torch.cuda.device_count()}")
+            else:
+                print("   🎲 CPU-only PyTorch determinism: enabled")
+                
+            # Additional environment variable for full reproducibility
+            os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
                 
         except ImportError:
-            pass  # PyTorch not available
+            print("   ⚠️  PyTorch not available - skipping deterministic setup")
 
         # Try to import scientifically corrected version first
         try:
