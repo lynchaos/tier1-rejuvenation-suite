@@ -152,10 +152,12 @@ def _normalize_bulk_rnaseq(data: pd.DataFrame, method: str = "auto") -> Tuple[pd
     if genes_are_rows:
         print(f"ℹ️  Detected genes as rows (reasons: {', '.join(detection_reasons)}); transposing to [samples x genes]")
         data = data.T
+        # Data is now normalized to [samples x genes] orientation
         samples_axis, genes_axis = 0, 1
         qc_metrics["orientation"] = "genes_x_samples_transposed"
         qc_metrics["detection_reasons"] = detection_reasons
     else:
+        # Data already in [samples x genes] orientation  
         samples_axis, genes_axis = 0, 1
         qc_metrics["orientation"] = "samples_x_genes"
         qc_metrics["detection_reasons"] = ["samples_as_rows_assumed"]
@@ -380,11 +382,11 @@ def _fdr_differential_expression(expr_df: pd.DataFrame, groups: pd.Series, alpha
         # FDR correction on valid p-values
         valid_pvals = results_df['pvalue'].dropna()
         if len(valid_pvals) > 0:
-            corrected_pvals, rejected = _perform_multiple_testing_correction(
+            corrected_pvals, _ = _perform_multiple_testing_correction(
                 results_df['pvalue'].values, method='fdr_bh', alpha=alpha
             )
             results_df['qvalue'] = corrected_pvals
-            results_df['significant'] = rejected
+            results_df['significant'] = results_df['qvalue'] < alpha
             
             # Track which correction method was used
             try:
@@ -1062,6 +1064,9 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         "differential_expression": None,
         "confidence_interval_mean": None
     }
+    
+    # Ensure age_stats is always defined regardless of the correlation branch outcome
+    age_stats: Optional[Dict[str, Any]] = None
 
     try:
         import os
@@ -1239,9 +1244,6 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         print(f"📉 Score range: {np.nanmin(scores):.3f} - {np.nanmax(scores):.3f}")
         print(f"📊 Standard deviation: {np.nanstd(scores):.3f}")
         print(f"🧬 Reference biomarker panel: {total_biomarkers} genes across {len(biomarkers)} categories")
-
-        # Initialize age_stats to prevent UnboundLocalError
-        age_stats: Optional[Dict[str, Any]] = None
 
         # Add scientific calibration metrics with proper statistics
         print("\n🔬 SCIENTIFIC VALIDATION METRICS:")
