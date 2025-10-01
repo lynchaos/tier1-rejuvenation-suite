@@ -152,15 +152,14 @@ def _normalize_bulk_rnaseq(data: pd.DataFrame, method: str = "auto") -> Tuple[pd
     if genes_are_rows:
         print(f"ℹ️  Detected genes as rows (reasons: {', '.join(detection_reasons)}); transposing to [samples x genes]")
         data = data.T
-        # Data is now normalized to [samples x genes] orientation
-        samples_axis, genes_axis = 0, 1
         qc_metrics["orientation"] = "genes_x_samples_transposed"
         qc_metrics["detection_reasons"] = detection_reasons
     else:
-        # Data already in [samples x genes] orientation  
-        samples_axis, genes_axis = 0, 1
         qc_metrics["orientation"] = "samples_x_genes"
         qc_metrics["detection_reasons"] = ["samples_as_rows_assumed"]
+    
+    # After orientation is finalized, data is always [samples x genes]
+    samples_axis, genes_axis = 0, 1
     
     qc_metrics["n_samples"] = data.shape[samples_axis]
     qc_metrics["n_genes"] = data.shape[genes_axis]
@@ -223,6 +222,15 @@ def _normalize_bulk_rnaseq(data: pd.DataFrame, method: str = "auto") -> Tuple[pd
             
         cpm = data_filtered.div(lib_size, axis=samples_axis) * 1e6
         normalized = np.log1p(cpm)
+        
+        # Remove samples with zero library size (all-NaN rows) to keep pipeline numerically clean
+        if zero_lib_mask.any():
+            normalized = normalized.loc[~zero_lib_mask]
+            qc_metrics["samples_removed_due_to_zero_library"] = int(zero_lib_mask.sum())
+            print(f"   🗑️  Removed {zero_lib_mask.sum()} samples with zero library size")
+        else:
+            qc_metrics["samples_removed_due_to_zero_library"] = 0
+            
         qc_metrics["normalization"] = "CPM_log1p"
     elif method == "log1p":
         # Log1p transformation
