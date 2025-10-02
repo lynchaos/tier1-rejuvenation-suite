@@ -1427,9 +1427,9 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
         else:
             print(f"⚠️  Score column '{score_col}' not found in results")
 
-        # Generate enhanced scientific report
-        report_name = "RegenOmics (Corrected)" if is_corrected else "RegenOmics"
-        print(f"\n📋 Generating {report_name} report...")
+        # Generate enhanced scientific report  
+        report_name = "RegenOmics Master Pipeline"  # Use consistent name for reporting
+        print(f"\n📋 Generating scientific analysis report...")
 
         # Combine results with metadata for comprehensive reporting
         if metadata_df is not None:
