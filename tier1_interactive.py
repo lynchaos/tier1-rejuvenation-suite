@@ -43,15 +43,29 @@ sys.path.insert(0, str(project_root))
 AGE_THRESHOLD = 50  # Default age threshold for young/old stratification
 
 
-def _emit_report(name: str, payload: dict, metadata: Optional[dict] = None) -> Optional[str]:
-    """Unified scientific report generation with error handling"""
+def _emit_report(name: str, payload: dict, metadata: Optional[dict] = None, 
+                formats: List[str] = None) -> Optional[Dict[str, str]]:
+    """Unified scientific report generation with error handling and multiple formats"""
     try:
         from scientific_reporter import generate_comprehensive_report
     except ImportError:
         print("⚠️  Reporting module not found; skipping.")
         return None
+    
+    # Default to all formats
+    if formats is None:
+        formats = ['markdown', 'html', 'pdf']
+    
     try:
-        return generate_comprehensive_report(name, payload, metadata or {})
+        # Handle different payload structures for different apps
+        if name == "RegenOmics Master Pipeline":
+            # RegenOmics expects DataFrame as results_data
+            results_data = payload.get("results", payload)
+        else:
+            # Other apps might expect different structures
+            results_data = payload
+            
+        return generate_comprehensive_report(name, results_data, metadata or {}, formats)
     except TypeError as e:
         print(f"⚠️  Reporter API mismatch: {e}. Payload keys: {list(payload.keys())}")
         return None
@@ -1124,11 +1138,21 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
             return False
 
         # Separate expression data from metadata more explicitly
-        expr_data = raw_data.select_dtypes(include=[np.number])
-        non_expr_cols = [c for c in raw_data.columns if c not in expr_data.columns]
+        # Known metadata columns that should not be treated as genes
+        metadata_cols = ['age', 'sex', 'tissue', 'batch', 'treatment', 'condition', 
+                        'time_point', 'replicate', 'patient_id', 'sample_type']
+        
+        # Get numeric columns but exclude known metadata columns
+        numeric_cols = raw_data.select_dtypes(include=[np.number]).columns
+        gene_cols = [c for c in numeric_cols if c.lower() not in [mc.lower() for mc in metadata_cols]]
+        
+        expr_data = raw_data[gene_cols]
+        
+        # Collect all metadata columns (both numeric and non-numeric)
+        metadata_col_names = [c for c in raw_data.columns if c not in gene_cols]
         existing_metadata = (
-            raw_data[non_expr_cols].copy()
-            if non_expr_cols
+            raw_data[metadata_col_names].copy()
+            if metadata_col_names
             else pd.DataFrame(index=expr_data.index)
         )
         
@@ -1438,8 +1462,13 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
             combined_results = result_df
 
         # Standardized payload and metadata
+        # Ensure consistent column naming for reporting
+        results_for_report = combined_results.copy()
+        if "biological_rejuvenation_score" in results_for_report.columns:
+            results_for_report["rejuvenation_score"] = results_for_report["biological_rejuvenation_score"]
+        
         payload = {
-            "results": combined_results,
+            "results": results_for_report,
             "expression_data": expr_data,
             "sample_metadata": metadata_df,
         }
@@ -1480,10 +1509,16 @@ def run_regenomics(data_path: str, data_type: str) -> bool:
             "biomarker_categories": list(biomarkers.keys()),
         })
 
-        report_path = _emit_report(report_name, payload, report_metadata)
+        report_paths = _emit_report(report_name, payload, report_metadata)
 
-        if report_path:
-            print(f"📄 Scientific report saved: {report_path}")
+        if report_paths and isinstance(report_paths, dict):
+            print("📄 Scientific reports generated:")
+            for format_name, path in report_paths.items():
+                if path:
+                    print(f"   📄 {format_name.upper()}: {path}")
+        elif isinstance(report_paths, str):
+            # Backwards compatibility for single path
+            print(f"📄 Scientific report saved: {report_paths}")
 
             if is_corrected:
                 print("🔬 Enhanced report includes:")

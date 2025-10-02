@@ -311,9 +311,9 @@ class BiologicallyValidatedRejuvenationScorer:
             return self._validate_existing_labels(df)
 
         # Age-stratified baseline correction
-        age_strata = self._create_age_strata(
-            df["age"].values if "age" in df.columns else None, n_samples=len(df)
-        )
+        # Use stored age information if available
+        age_values = getattr(self, '_age_values', None)
+        age_strata = self._create_age_strata(age_values, n_samples=len(df))
 
         # Weighted biological components based on aging literature
         biological_weights = {
@@ -457,8 +457,10 @@ class BiologicallyValidatedRejuvenationScorer:
         """
         logger.info("Creating synthetic age-based rejuvenation target...")
 
-        if "age" in df.columns:
-            ages = df["age"].values
+        # Use stored age values if available
+        ages = getattr(self, '_age_values', None)
+        
+        if ages is not None:
             # Simple age-based target: younger = higher rejuvenation potential
             max_age = ages.max()
             min_age = ages.min()
@@ -636,9 +638,16 @@ class BiologicallyValidatedRejuvenationScorer:
 
         return weighted_importance.sort_values(ascending=False)
 
-    def score_cells(self, df: pd.DataFrame) -> pd.DataFrame:
+    def score_cells(self, df: pd.DataFrame, metadata: pd.DataFrame = None) -> pd.DataFrame:
         """
         Main function to score cellular rejuvenation with biological validation
+        
+        Parameters:
+        -----------
+        df : pd.DataFrame
+            Expression data (genes x samples)
+        metadata : pd.DataFrame, optional
+            Sample metadata including age information
         """
         logger.info("Starting biologically validated cell rejuvenation scoring...")
 
@@ -649,9 +658,17 @@ class BiologicallyValidatedRejuvenationScorer:
         pathway_df = self.calculate_pathway_scores(df_processed)
 
         # Create age strata for biological correction
-        age_strata = self._create_age_strata(
-            df_processed["age"].values if "age" in df_processed.columns else None
-        )
+        # Try to get age from metadata first, then from main DataFrame
+        age_values = None
+        if metadata is not None and "age" in metadata.columns:
+            age_values = metadata["age"].values
+        elif "age" in df_processed.columns:
+            age_values = df_processed["age"].values
+        
+        # Store age values for target creation
+        self._age_values = age_values
+            
+        age_strata = self._create_age_strata(age_values, n_samples=len(df_processed))
 
         # Create biologically validated target for training
         if not self.models:  # Training mode
@@ -770,6 +787,47 @@ class BiologicallyValidatedRejuvenationScorer:
 
         logger.info(f"Biologically validated models saved to {self.model_dir}")
 
+    def create_ensemble_prediction(self, X: pd.DataFrame) -> pd.Series:
+        """
+        Create ensemble prediction from all trained models with biological validation
+        """
+        logger.info("Creating ensemble predictions...")
+
+        X_numeric = X.select_dtypes(include=[np.number]).fillna(X.median())
+        X_scaled = self.scalers["robust_scaler"].transform(X_numeric)
+        X_scaled_df = pd.DataFrame(
+            X_scaled, columns=X_numeric.columns, index=X_numeric.index
+        )
+
+        predictions = {}
+        weights = {}
+
+        # Get predictions from each model
+        for name, model_info in self.models.items():
+            model = model_info["model"]
+            pred = model.predict(X_scaled_df)
+            predictions[name] = pred
+
+            # Weight by cross-validation performance
+            weights[name] = max(0, model_info["cv_r2_mean"])  # Avoid negative weights
+
+        # Normalize weights
+        total_weight = sum(weights.values())
+        if total_weight > 0:
+            weights = {k: v / total_weight for k, v in weights.items()}
+        else:
+            weights = {k: 1 / len(weights) for k in weights.keys()}
+
+        # Create weighted ensemble
+        ensemble_pred = np.zeros(len(X))
+        for name, pred in predictions.items():
+            ensemble_pred += weights[name] * pred
+
+        # Ensure scores are in [0, 1] range
+        ensemble_pred = np.clip(ensemble_pred, 0, 1)
+
+        return pd.Series(ensemble_pred, index=X.index, name="biological_rejuvenation_score")
+
 
 # Additional methods would continue here...
-# (create_ensemble_prediction, calculate_biological_confidence_intervals, etc.)
+# (calculate_biological_confidence_intervals, etc.)
