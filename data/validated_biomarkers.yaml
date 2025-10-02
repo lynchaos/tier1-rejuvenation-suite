@@ -1,0 +1,337 @@
+# TIER 1 Validated Aging/Rejuvenation Biomarker Panel
+# Curated from peer-reviewed sources with effect directions and citations
+# Sources: GenAge, Aging Atlas, López-Otín 2013 Hallmarks of Aging, transcriptomic clocks
+
+biomarkers:
+  cellular_senescence:
+    description: "Markers of cellular senescence and growth arrest"
+    markers:
+      - gene: CDKN2A
+        symbol: "p16^INK4a"
+        effect: "up_with_age"
+        direction: "positive"  # higher expression = more aged
+        mechanism: "Cell cycle arrest, senescence marker"
+        refs: ["PMID:17173049", "PMID:22327585"]
+        
+      - gene: CDKN1A
+        symbol: "p21"
+        effect: "up_with_age"
+        direction: "positive"
+        mechanism: "Cell cycle arrest, DNA damage response"
+        refs: ["PMID:7562971", "PMID:11252893"]
+        
+      - gene: TP53
+        symbol: "p53"
+        effect: "context_dependent"
+        direction: "positive"
+        mechanism: "Senescence-inducing, apoptotic guardian"
+        refs: ["PMID:11252893", "PMID:17173049"]
+        
+      - gene: RB1
+        symbol: "Rb"
+        effect: "up_in_senescent_cells"
+        direction: "positive"
+        mechanism: "Cell cycle checkpoint control"
+        refs: ["PMID:20157566"]
+
+  dna_damage_repair:
+    description: "DNA damage response and repair mechanisms"
+    markers:
+      - gene: ATM
+        symbol: "ATM"
+        effect: "up_on_damage_impaired_function"
+        direction: "context_dependent"
+        mechanism: "DNA damage checkpoint kinase"
+        refs: ["PMID:15131257", "PMID:19421011"]
+        
+      - gene: BRCA1
+        symbol: "BRCA1"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "Homologous recombination repair"
+        refs: ["PMID:17587472"]
+        
+      - gene: PARP1
+        symbol: "PARP1"
+        effect: "activity_declines_with_age"
+        direction: "negative"
+        mechanism: "Base excision repair, NAD+ depletion"
+        refs: ["PMID:22575772"]
+        
+      - gene: H2AFX
+        symbol: "γ-H2AX"
+        effect: "accumulates_with_age"
+        direction: "positive"
+        mechanism: "DNA double-strand break marker"
+        refs: ["PMID:19421011"]
+
+  mitochondrial_function:
+    description: "Mitochondrial biogenesis and function"
+    markers:
+      - gene: SIRT3
+        symbol: "SIRT3"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "Mitochondrial NAD+ deacetylase"
+        refs: ["PMID:21478827"]
+        
+      - gene: PPARGC1A
+        symbol: "PGC1α"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "Mitochondrial biogenesis master regulator"
+        refs: ["PMID:14633988", "PMID:19237505"]
+        
+      - gene: TFAM
+        symbol: "TFAM"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "Mitochondrial transcription factor"
+        refs: ["PMID:19237505"]
+
+  telomere_maintenance:
+    description: "Telomere length and maintenance mechanisms"
+    markers:
+      - gene: TERT
+        symbol: "TERT"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "Telomerase reverse transcriptase"
+        refs: ["PMID:10788510"]
+        
+      - gene: POT1
+        symbol: "POT1"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "Telomere protection complex"
+        refs: ["PMID:14691228"]
+
+  autophagy_proteostasis:
+    description: "Autophagy and protein quality control"
+    markers:
+      - gene: ATG5
+        symbol: "ATG5"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "Essential autophagy gene"
+        refs: ["PMID:18414447"]
+        
+      - gene: ATG7
+        symbol: "ATG7"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "E1-like enzyme for autophagy"
+        refs: ["PMID:10619428"]
+        
+      - gene: BECN1
+        symbol: "Beclin 1"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "Autophagy initiator, VPS34 interaction"
+        refs: ["PMID:12507429"]
+        
+      - gene: MAP1LC3B
+        symbol: "LC3B"
+        effect: "context_dependent"
+        direction: "context_dependent"
+        mechanism: "Autophagosome marker, LC3-II/I ratio indicates flux"
+        refs: ["PMID:10485849"]
+        
+      - gene: SQSTM1
+        symbol: "p62"
+        effect: "up_with_age"
+        direction: "positive"
+        mechanism: "Accumulates due to reduced autophagy"
+        refs: ["PMID:19289080"]
+        
+      - gene: HSPA1A
+        symbol: "HSP70"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "Molecular chaperone, proteostasis maintenance"
+        refs: ["PMID:8479518"]
+
+  inflammation_SASP:
+    description: "Inflammation and senescence-associated secretory phenotype"
+    markers:
+      - gene: IL6
+        symbol: "IL-6"
+        effect: "up_with_age"
+        direction: "positive"
+        mechanism: "Key SASP factor, inflammaging marker"
+        refs: ["PMID:10840763"]
+        
+      - gene: IL1B
+        symbol: "IL-1β"
+        effect: "up_with_age"
+        direction: "positive"
+        mechanism: "Pro-inflammatory SASP cytokine"
+        refs: ["PMID:11842246"]
+        
+      - gene: TNF
+        symbol: "TNF-α"
+        effect: "up_with_age"
+        direction: "positive"
+        mechanism: "Pro-inflammatory cytokine, inflammaging"
+        refs: ["PMID:18536062"]
+        
+      - gene: CXCL1
+        symbol: "CXCL1"
+        effect: "up_with_age"
+        direction: "positive"
+        mechanism: "SASP chemokine, neutrophil recruitment"
+        refs: ["PMID:18762714"]
+        
+      - gene: NLRP3
+        symbol: "NLRP3"
+        effect: "up_with_age"
+        direction: "positive"
+        mechanism: "Inflammasome component, drives IL-1β maturation"
+        refs: ["PMID:28877457"]
+
+  metabolism:
+    description: "Metabolic regulation and nutrient sensing"
+    markers:
+      - gene: MTOR
+        symbol: "mTOR"
+        effect: "hyperactivated_with_age"
+        direction: "positive"
+        mechanism: "Nutrient sensing, protein synthesis"
+        refs: ["PMID:19139758"]
+        
+      - gene: FOXO3
+        symbol: "FOXO3"
+        effect: "activity_declines_with_age"
+        direction: "negative"
+        mechanism: "Longevity transcription factor"
+        refs: ["PMID:17090232", "PMID:20040428"]
+        
+      - gene: IGF1
+        symbol: "IGF-1"
+        effect: "dysregulated_decline_with_longevity"
+        direction: "context_dependent"
+        mechanism: "Growth factor, insulin signaling"
+        refs: ["PMID:20040428"]
+
+  epigenetics:
+    description: "Chromatin structure and epigenetic modifications"
+    markers:
+      - gene: DNMT1
+        symbol: "DNMT1"
+        effect: "global_activity_altered_with_age"
+        direction: "context_dependent"
+        mechanism: "DNA methyltransferase, methylation patterns"
+        refs: ["PMID:15987733"]
+        
+      - gene: TET2
+        symbol: "TET2"
+        effect: "mutations_accumulate_with_age"
+        direction: "negative"
+        mechanism: "DNA demethylation, clonal hematopoiesis"
+        refs: ["PMID:22456332"]
+        
+      - gene: SIRT1
+        symbol: "SIRT1"
+        effect: "declines_with_age"
+        direction: "negative"
+        mechanism: "NAD+-dependent deacetylase, longevity"
+        refs: ["PMID:12151020"]
+        
+      - gene: DNMT3A
+        symbol: "DNMT3A"
+        effect: "context_dependent"
+        direction: "context_dependent"
+        mechanism: "De novo methyltransferase"
+        refs: ["PMID:9765397"]
+        
+      - gene: TET1
+        symbol: "TET1"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "DNA demethylation, 5mC to 5hmC conversion"
+        refs: ["PMID:19372391"]
+        
+      - gene: HDAC1
+        symbol: "HDAC1"
+        effect: "context_dependent"
+        direction: "context_dependent"
+        mechanism: "Histone deacetylase, chromatin remodeling"
+        refs: ["PMID:8479518"]
+
+  ecm_remodeling:
+    description: "Extracellular matrix remodeling and structural integrity"
+    markers:
+      - gene: MMP2
+        symbol: "MMP2"
+        effect: "up_with_age"
+        direction: "positive"
+        mechanism: "ECM degradation, SASP component"
+        refs: ["PMID:18762714"]
+        
+      - gene: COL1A1
+        symbol: "COL1A1"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "Major structural protein, declines in skin aging"
+        refs: ["PMID:11099404"]
+
+  stem_cell_regeneration:
+    description: "Stem cell function and regenerative capacity"
+    markers:
+      - gene: NANOG
+        symbol: "NANOG"
+        effect: "down_with_age"
+        direction: "negative" 
+        mechanism: "Pluripotency factor, stem cell exhaustion"
+        refs: ["PMID:12787504"]
+        
+      - gene: SOX2
+        symbol: "SOX2"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "Yamanaka factor, pluripotency maintenance"
+        refs: ["PMID:17218260"]
+        
+      - gene: POU5F1
+        symbol: "OCT4"
+        effect: "down_with_age"
+        direction: "negative"
+        mechanism: "Yamanaka factor, master pluripotency regulator"
+        refs: ["PMID:17218260"]
+        
+      - gene: KLF4
+        symbol: "KLF4"
+        effect: "context_dependent"
+        direction: "context_dependent"
+        mechanism: "Yamanaka factor, reprogramming"
+        refs: ["PMID:17218260"]
+        
+      - gene: MYC
+        symbol: "MYC"
+        effect: "context_dependent"
+        direction: "context_dependent"
+        mechanism: "Yamanaka factor, cell proliferation"
+        refs: ["PMID:17218260"]
+
+# Pathway scoring weights based on literature evidence
+pathway_weights:
+  cellular_senescence: 0.20
+  dna_damage_repair: 0.15
+  mitochondrial_function: 0.15
+  telomere_maintenance: 0.10
+  autophagy_proteostasis: 0.15
+  inflammation_SASP: 0.10
+  metabolism: 0.10
+  epigenetics: 0.05
+
+# Reference ranges for validation
+reference_ranges:
+  young_adult: "20-35 years"
+  middle_aged: "35-55 years"
+  elderly: "55+ years"
+  
+# Quality control thresholds
+qc_thresholds:
+  min_markers_per_pathway: 2
+  min_total_markers: 15
+  correlation_threshold: 0.3

@@ -122,3 +122,4 @@ outputs/
 *.log
 provenance/
 environment_lock.txt
+proposals/
