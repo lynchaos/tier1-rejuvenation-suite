@@ -169,7 +169,7 @@ def run_all_robustness_tests():
         test_run_regenomics_with_all_nan_ages()
         test_mixed_data_types_robustness()
         
-        print(f"\n🎉 All robustness tests passed! TIER 1 Suite is bulletproof.")
+        print(f"\n🎉 All robustness tests passed! TIER 1 Suite is production-ready.")
         return True
         
     except Exception as e:
