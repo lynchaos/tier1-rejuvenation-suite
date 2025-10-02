@@ -10,14 +10,17 @@ A comprehensive bioinformatics analysis suite for cellular aging research with m
 - **Statistical Rigor**: Bootstrap confidence intervals, FDR correction, normalization
 - **Real-world Data Support**: Bulk RNA-seq analysis with biological validation
 
-## Scientific Visualization Standards
+## Advanced Scientific Visualization Suite
 
-All analysis results are supported by publication-quality figures and charts:
-- **Matplotlib & Seaborn**: Professional scientific plotting libraries
-- **High Resolution**: 300 DPI PNG exports for publications
-- **Comprehensive Coverage**: Distribution plots, statistical summaries, correlation analyses
-- **Automated Generation**: Figures created automatically with each analysis
-- **Report Integration**: All charts embedded in HTML/PDF reports
+Comprehensive mathematical, machine learning, and statistical analysis visualization:
+- **5 Analysis Categories**: Statistical distributions, ML performance, mathematical modeling, statistical testing, biological pathways
+- **Publication Standards**: 300 DPI resolution, professional matplotlib/seaborn styling
+- **Mathematical Analysis**: Correlation matrices, PCA visualization, sigmoid modeling, bootstrap confidence intervals
+- **Machine Learning Metrics**: Cross-validation tracking, feature importance, learning curves, ROC analysis
+- **Statistical Testing**: t-tests, ANOVA, regression analysis with confidence bands, power analysis
+- **Biological Networks**: Pathway enrichment, gene expression heatmaps, regulatory network visualization
+- **Enhanced HTML/PDF**: Base64-embedded figures with responsive design and hover effects
+- **Automated Integration**: All figures automatically generated and embedded in reports
 
 ## Quick Start
 
