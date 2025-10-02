@@ -350,7 +350,7 @@ class BiologicallyValidatedRejuvenationScorer:
                 target_components.append(weight * age_corrected)
                 component_weights.append(abs(weight))
 
-        if target_components:
+        if len(target_components) > 0:
             # Weighted combination preserving biological meaning
             target = np.average(target_components, axis=0, weights=component_weights)
 
@@ -672,10 +672,22 @@ class BiologicallyValidatedRejuvenationScorer:
 
         # Create biologically validated target for training
         if not self.models:  # Training mode
-            target = self.create_biologically_validated_target(pathway_df)
+            try:
+                logger.info("Creating biologically validated target variable...")
+                target = self.create_biologically_validated_target(pathway_df)
+                logger.info(f"Target variable created successfully: {target.shape}")
+            except Exception as e:
+                logger.error(f"Error in target creation: {e}")
+                raise
 
-            # Train models with biological validation
-            self.train_ensemble_models(pathway_df, target, age_strata)
+            try:
+                logger.info("Training biologically-informed ensemble models...")
+                # Train models with biological validation
+                self.train_ensemble_models(pathway_df, target, age_strata)
+                logger.info("Model training completed successfully")
+            except Exception as e:
+                logger.error(f"Error in model training: {e}")
+                raise
 
             # Save models
             self.save_models()
@@ -828,6 +840,42 @@ class BiologicallyValidatedRejuvenationScorer:
 
         return pd.Series(ensemble_pred, index=X.index, name="biological_rejuvenation_score")
 
+    def calculate_biological_confidence_intervals(
+        self, X: pd.DataFrame, age_strata: np.ndarray = None, n_bootstrap: int = 100
+    ) -> Dict:
+        """
+        Calculate confidence intervals using bootstrap sampling with biological validation
+        """
+        logger.info(
+            f"Calculating confidence intervals with {n_bootstrap} bootstrap samples..."
+        )
+
+        bootstrap_predictions = []
+        n_samples = len(X)
+
+        for _i in range(n_bootstrap):
+            # Bootstrap sample
+            bootstrap_indices = np.random.choice(n_samples, n_samples, replace=True)
+            X_bootstrap = X.iloc[bootstrap_indices]
+
+            # Get prediction
+            pred = self.create_ensemble_prediction(X_bootstrap)
+            bootstrap_predictions.append(pred.values)
+
+        # Calculate statistics
+        bootstrap_array = np.array(bootstrap_predictions)
+
+        confidence_intervals = {
+            "mean": np.mean(bootstrap_array, axis=0),
+            "std": np.std(bootstrap_array, axis=0),
+            "lower_95": np.percentile(bootstrap_array, 2.5, axis=0),
+            "upper_95": np.percentile(bootstrap_array, 97.5, axis=0),
+            "lower_68": np.percentile(bootstrap_array, 16, axis=0),
+            "upper_68": np.percentile(bootstrap_array, 84, axis=0),
+        }
+
+        return confidence_intervals
+
 
 # Additional methods would continue here...
-# (calculate_biological_confidence_intervals, etc.)
+# (etc.)
