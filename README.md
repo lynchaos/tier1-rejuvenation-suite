@@ -85,7 +85,7 @@ If you use this software in your research, please cite:
 ```bibtex
 @software{tier1_rejuvenation_suite,
   title={TIER 1 Cell Rejuvenation Suite},
-  author={Your Name},
+  author={Yaylali, Kemal},
   year={2025},
-  url={https://github.com/your-username/tier1-rejuvenation-suite}
+  url={https://github.com/lynchaos/tier1-rejuvenation-suite}
 }
