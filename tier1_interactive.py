@@ -275,6 +275,7 @@ def _normalize_bulk_rnaseq(data: pd.DataFrame, method: str = "auto") -> Tuple[pd
 def _perform_multiple_testing_correction(pvalues: np.ndarray, method: str = "fdr_bh", alpha: float = 0.05) -> Tuple[np.ndarray, np.ndarray]:
     """
     Perform multiple testing correction with proper NaN handling.
+    Prefers SciPy over statsmodels when available.
     
     Args:
         pvalues: Array of p-values
@@ -284,55 +285,40 @@ def _perform_multiple_testing_correction(pvalues: np.ndarray, method: str = "fdr
     Returns:
         Corrected p-values and rejection mask
     """
-    # Check for newer SciPy FDR function availability
-    try:
-        from scipy.stats import false_discovery_control  # type: ignore
-        HAVE_SCIPY_FDR = True
-    except (ImportError, AttributeError):
-        HAVE_SCIPY_FDR = False
+    pvalues = np.asarray(pvalues, dtype=float)
+    valid_mask = ~np.isnan(pvalues)
+    corrected = np.full_like(pvalues, np.nan)
+    rejected = np.zeros_like(pvalues, dtype=bool)
     
+    valid_pvals = pvalues[valid_mask]
+    if valid_pvals.size == 0:
+        return corrected, rejected
+    
+    # 1) Try SciPy first (preferred)
+    if method == "fdr_bh":
+        try:
+            from scipy.stats import false_discovery_control
+            q_vals = false_discovery_control(valid_pvals, method="bh")
+            corrected[valid_mask] = q_vals
+            rejected[valid_mask] = q_vals < alpha
+            return corrected, rejected
+        except Exception:
+            pass
+    
+    # 2) Fallback to statsmodels
     try:
         from statsmodels.stats.multitest import multipletests
-        
-        # Remove NaN values
-        valid_mask = ~np.isnan(pvalues)
-        valid_pvals = pvalues[valid_mask]
-        
-        if len(valid_pvals) == 0:
-            return pvalues, np.zeros(len(pvalues), dtype=bool)
-        
-        # Apply correction with proper alpha handling
-        if method == "fdr_bh":
-            if HAVE_SCIPY_FDR:
-                try:
-                    corrected = false_discovery_control(valid_pvals, method='bh')
-                    rejected = corrected < alpha
-                except Exception:
-                    # Fallback to statsmodels
-                    rejected, corrected, _, _ = multipletests(valid_pvals, alpha=alpha, method='fdr_bh')
-            else:
-                # Use statsmodels directly
-                rejected, corrected, _, _ = multipletests(valid_pvals, alpha=alpha, method='fdr_bh')
-        elif method == "bonferroni":
-            rejected, corrected, _, _ = multipletests(valid_pvals, alpha=alpha, method='bonferroni')
-        elif method == "fdr_by":
-            rejected, corrected, _, _ = multipletests(valid_pvals, alpha=alpha, method='fdr_by')
-        else:
-            corrected = valid_pvals
-            rejected = valid_pvals < alpha
-        
-        # Reconstruct full arrays
-        full_corrected = np.full_like(pvalues, np.nan)
-        full_rejected = np.zeros(len(pvalues), dtype=bool)
-        
-        full_corrected[valid_mask] = corrected
-        full_rejected[valid_mask] = rejected
-        
-        return full_corrected, full_rejected
-        
-    except ImportError:
-        # No scipy/statsmodels - return uncorrected
-        return pvalues, pvalues < alpha
+        rej, q_vals, _, _ = multipletests(valid_pvals, alpha=alpha, method=method)
+        corrected[valid_mask] = q_vals
+        rejected[valid_mask] = rej
+        return corrected, rejected
+    except Exception:
+        pass
+    
+    # 3) Last resort: uncorrected p-values
+    corrected[valid_mask] = valid_pvals
+    rejected[valid_mask] = valid_pvals < alpha
+    return corrected, rejected
 
 
 def _fdr_differential_expression(expr_df: pd.DataFrame, groups: pd.Series, alpha: float = 0.05) -> Optional[pd.DataFrame]:
@@ -479,31 +465,32 @@ def _compute_age_stratified_statistics(scores: np.ndarray, ages: np.ndarray,
         scores: Rejuvenation scores
         ages: Age values
         age_threshold: Threshold for young/old classification
+        alpha: Significance threshold for FDR correction
     
     Returns:
         Statistical results with multiple testing correction
     """
+    # Clean data first so both branches can use them
+    valid_mask = ~(np.isnan(scores) | np.isnan(ages))
+    clean_scores = scores[valid_mask]
+    clean_ages = ages[valid_mask]
+    
+    if len(clean_scores) < 4:  # Minimum for meaningful statistics
+        return {"error": "insufficient_data", "n_valid": len(clean_scores)}
+    
+    # Stratify by age
+    young_mask = clean_ages < age_threshold
+    old_mask = clean_ages >= age_threshold
+    
+    young_scores = clean_scores[young_mask]
+    old_scores = clean_scores[old_mask]
+    
+    if len(young_scores) < 2 or len(old_scores) < 2:
+        return {"error": "insufficient_group_sizes", 
+               "n_young": len(young_scores), "n_old": len(old_scores)}
+
     try:
         from scipy.stats import ttest_ind, mannwhitneyu
-        
-        # Clean data
-        valid_mask = ~(np.isnan(scores) | np.isnan(ages))
-        clean_scores = scores[valid_mask]
-        clean_ages = ages[valid_mask]
-        
-        if len(clean_scores) < 4:  # Minimum for meaningful statistics
-            return {"error": "insufficient_data", "n_valid": len(clean_scores)}
-        
-        # Stratify by age
-        young_mask = clean_ages < age_threshold
-        old_mask = clean_ages >= age_threshold
-        
-        young_scores = clean_scores[young_mask]
-        old_scores = clean_scores[old_mask]
-        
-        if len(young_scores) < 2 or len(old_scores) < 2:
-            return {"error": "insufficient_group_sizes", 
-                   "n_young": len(young_scores), "n_old": len(old_scores)}
         
         # Perform statistical tests
         t_stat, t_pval = ttest_ind(young_scores, old_scores)
@@ -1671,7 +1658,6 @@ def run_multi_omics(data_path: str, data_type: str) -> bool:
         # Set PyTorch seed and full deterministic behavior if available
         try:
             import torch
-            import os
             
             # Set all seeds
             torch.manual_seed(42)
