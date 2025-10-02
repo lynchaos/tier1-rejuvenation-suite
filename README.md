@@ -10,6 +10,15 @@ A comprehensive bioinformatics analysis suite for cellular aging research with m
 - **Statistical Rigor**: Bootstrap confidence intervals, FDR correction, normalization
 - **Real-world Data Support**: Bulk RNA-seq analysis with biological validation
 
+## Scientific Visualization Standards
+
+All analysis results are supported by publication-quality figures and charts:
+- **Matplotlib & Seaborn**: Professional scientific plotting libraries
+- **High Resolution**: 300 DPI PNG exports for publications
+- **Comprehensive Coverage**: Distribution plots, statistical summaries, correlation analyses
+- **Automated Generation**: Figures created automatically with each analysis
+- **Report Integration**: All charts embedded in HTML/PDF reports
+
 ## Quick Start
 
 ### Installation
@@ -45,13 +54,25 @@ Sample_002,9.1,14.2,15.8,...,32,M,fibroblast
 
 ## Output
 
-The analysis generates:
-- **Statistical Results**: Rejuvenation scores, confidence intervals, age-stratified analysis
-- **Professional Reports**: 
-  - `reports/RegenOmics_Report_YYYYMMDD_HHMMSS.md` (Markdown)
-  - `reports/RegenOmics_Report_YYYYMMDD_HHMMSS.html` (HTML)  
-  - `reports/RegenOmics_Report_YYYYMMDD_HHMMSS.pdf` (PDF)
-- **Visualizations**: Age-correlation plots, pathway analysis figures
+The analysis generates comprehensive results with supporting visualizations:
+
+### Professional Reports
+- `reports/RegenOmics_Report_YYYYMMDD_HHMMSS.md` (Markdown)
+- `reports/RegenOmics_Report_YYYYMMDD_HHMMSS.html` (HTML)  
+- `reports/RegenOmics_Report_YYYYMMDD_HHMMSS.pdf` (PDF)
+
+### Statistical Analysis
+- Rejuvenation scores with confidence intervals
+- Age-stratified statistical validation
+- Bootstrap analysis and normality testing
+- Cross-validation performance metrics
+
+### Publication-Quality Figures
+- **Score Distribution Plots**: Histograms and box plots of rejuvenation scores
+- **Statistical Summary Charts**: Mean, median, quartiles visualization
+- **Category Analysis Graphs**: Rejuvenation classification breakdowns
+- **Age Correlation Figures**: Age vs rejuvenation score relationships
+- All figures saved as high-resolution PNG files (300 DPI)
 
 ## Example Results
 
